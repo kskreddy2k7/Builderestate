@@ -1,0 +1,41 @@
+{
+  "name": "@buildestate/ui",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BuildEstate shared UI component library",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./globals.css": "./src/globals.css"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts,.tsx",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.1.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.408.0",
+    "tailwind-merge": "^2.4.0"
+  },
+  "devDependencies": {
+    "@buildestate/config": "workspace:*",
+    "@types/react": "^18.3.3",
+    "tailwindcss": "^3.4.10",
+    "tsup": "^8.2.4",
+    "typescript": "^5.5.4"
+  }
+}

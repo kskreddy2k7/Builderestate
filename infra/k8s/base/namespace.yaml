@@ -1,0 +1,8 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: buildestate
+  labels:
+    app.kubernetes.io/name: buildestate
+    environment: production

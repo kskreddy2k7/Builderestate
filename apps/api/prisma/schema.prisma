@@ -1,0 +1,1642 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// BuildEstate — Complete Database Schema
+// PostgreSQL + Prisma ORM
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  BUILDER
+  BROKER
+  BUYER
+  CONTRACTOR
+  SITE_ENGINEER
+  SUPPLIER
+  AGENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum OrgType {
+  BUILDER
+  BROKERAGE
+  CONTRACTOR
+  SUPPLIER
+  INDIVIDUAL
+}
+
+enum VerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+enum PropertyType {
+  LAND
+  HOUSE
+  APARTMENT
+  VILLA
+  PLOT
+  COMMERCIAL
+}
+
+enum PropertyStatus {
+  DRAFT
+  ACTIVE
+  UNDER_REVIEW
+  SOLD
+  RENTED
+  INACTIVE
+}
+
+enum TransactionType {
+  NEW_BOOKING
+  RESALE
+  RENTAL
+}
+
+enum FurnishingStatus {
+  UNFURNISHED
+  SEMI_FURNISHED
+  FULLY_FURNISHED
+}
+
+enum ProjectStatus {
+  PLANNING
+  APPROVED
+  UNDER_CONSTRUCTION
+  CONSTRUCTION_COMPLETED
+  POSSESSION_STARTED
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum UnitStatus {
+  AVAILABLE
+  HOLD
+  BOOKED
+  AGREEMENT_DONE
+  REGISTERED
+  POSSESSION_GIVEN
+}
+
+enum BookingStatus {
+  PROVISIONAL
+  CONFIRMED
+  AGREEMENT_PENDING
+  AGREEMENT_DONE
+  REGISTERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentMethod {
+  ONLINE
+  NEFT
+  RTGS
+  CHEQUE
+  DEMAND_DRAFT
+  CASH
+  UPI
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  INTERESTED
+  SITE_VISIT_SCHEDULED
+  SITE_VISIT_DONE
+  NEGOTIATION
+  BOOKED
+  LOST
+  JUNK
+}
+
+enum LeadSource {
+  PORTAL
+  REFERRAL
+  WALK_IN
+  SOCIAL_MEDIA
+  NEWSPAPER
+  HOARDING
+  CAMPAIGN
+  CHANNEL_PARTNER
+  COLD_CALL
+  OTHER
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  INVOICED
+  PAID
+  ON_HOLD
+  CANCELLED
+}
+
+enum WorkOrderStatus {
+  DRAFT
+  ISSUED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CERTIFIED
+  CANCELLED
+}
+
+enum OrderStatus {
+  DRAFT
+  RFQ_SENT
+  QUOTED
+  PO_ISSUED
+  CONFIRMED
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+  GRN_DONE
+  COMPLETED
+  CANCELLED
+}
+
+enum InspectionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  PASS
+  FAIL
+  CONDITIONAL_PASS
+}
+
+enum MilestoneStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  ON_HOLD
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMED
+  PAYMENT_RECEIVED
+  PAYMENT_DUE
+  DEMAND_LETTER
+  MILESTONE_COMPLETED
+  PROGRESS_UPDATE
+  LEAD_ASSIGNED
+  SITE_VISIT_SCHEDULED
+  INSPECTION_SCHEDULED
+  NCR_RAISED
+  NCR_CLOSED
+  DOCUMENT_UPLOADED
+  COMPLAINT_RAISED
+  COMPLAINT_RESOLVED
+  DELIVERY_DISPATCHED
+  DELIVERY_COMPLETED
+  COMMISSION_APPROVED
+  PROPERTY_VERIFIED
+  SYSTEM_ALERT
+}
+
+// ─── AUTH & USERS ─────────────────────────────────────────────────────────────
+
+model User {
+  id                String     @id @default(uuid())
+  name              String
+  email             String     @unique
+  phone             String     @unique
+  passwordHash      String?
+  avatar            String?
+  status            UserStatus @default(PENDING_VERIFICATION)
+  isEmailVerified   Boolean    @default(false)
+  isPhoneVerified   Boolean    @default(false)
+  emailVerifyToken  String?
+  phoneOtp          String?
+  phoneOtpExpiresAt DateTime?
+  lastLoginAt       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  deletedAt         DateTime?
+
+  // Relations
+  roles             UserRole[]
+  orgMemberships    OrgMember[]
+  refreshTokens     RefreshToken[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  properties        Property[]       @relation("PropertyOwner")
+  leads             Lead[]           @relation("AssignedBroker")
+  bookings          Booking[]        @relation("Buyer")
+  brokerBookings    Booking[]        @relation("Broker")
+  progressUpdates   ProgressUpdate[]
+  dailyReports      DailySiteReport[]
+  inspections       Inspection[]
+  aiRequests        AiRequest[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  userId      String
+  token       String   @unique
+  deviceInfo  String?
+  ipAddress   String
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model Organization {
+  id                 String             @id @default(uuid())
+  name               String
+  slug               String             @unique
+  type               OrgType
+  gstin              String?            @unique
+  pan                String?
+  reraNumber         String?
+  phone              String?
+  email              String?
+  website            String?
+  addressLine1       String?
+  addressLine2       String?
+  city               String?
+  state              String?
+  pincode            String?
+  logo               String?
+  verificationStatus VerificationStatus @default(PENDING)
+  verifiedAt         DateTime?
+  verifiedBy         String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relations
+  members            OrgMember[]
+  projects           Project[]
+  properties         Property[]
+  leads              Lead[]
+  customers          Customer[]
+  contractors        Contractor[]
+
+  @@index([slug])
+  @@index([type])
+  @@map("organizations")
+}
+
+model OrgMember {
+  id          String    @id @default(uuid())
+  userId      String
+  orgId       String
+  role        UserRole
+  designation String?
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime?
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+  @@map("org_members")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  resource   String
+  resourceId String
+  before     Json?
+  after      Json?
+  ipAddress  String
+  userAgent  String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ─── MARKETPLACE ──────────────────────────────────────────────────────────────
+
+model Property {
+  id                 String             @id @default(uuid())
+  title              String
+  slug               String             @unique
+  description        String
+  type               PropertyType
+  status             PropertyStatus     @default(DRAFT)
+  transactionType    TransactionType
+  listedById         String
+  orgId              String?
+  addressLine1       String
+  addressLine2       String?
+  city               String
+  state              String
+  pincode            String
+  latitude           Float?
+  longitude          Float?
+  price              Decimal            @db.Decimal(15, 2)
+  pricePerSqft       Decimal?           @db.Decimal(10, 2)
+  area               Decimal            @db.Decimal(10, 2)
+  bhkType            String?
+  bathrooms          Int?
+  balconies          Int?
+  facing             String?
+  floorNumber        Int?
+  totalFloors        Int?
+  furnishingStatus   FurnishingStatus?
+  reraNumber         String?
+  reraStatus         VerificationStatus?
+  possessionDate     DateTime?
+  ageOfProperty      Int?
+  amenities          String[]
+  verificationStatus VerificationStatus @default(PENDING)
+  verifiedAt         DateTime?
+  verifiedBy         String?
+  viewCount          Int                @default(0)
+  enquiryCount       Int                @default(0)
+  isFeatured         Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+
+  listedBy           User               @relation("PropertyOwner", fields: [listedById], references: [id])
+  org                Organization?      @relation(fields: [orgId], references: [id])
+  media              PropertyMedia[]
+  documents          PropertyDocument[]
+  enquiries          PropertyEnquiry[]
+  savedBy            SavedProperty[]
+  leads              Lead[]
+
+  @@index([status, type])
+  @@index([city, state])
+  @@index([price])
+  @@index([listedById])
+  @@index([slug])
+  @@map("properties")
+}
+
+model PropertyMedia {
+  id           String   @id @default(uuid())
+  propertyId   String
+  url          String
+  thumbnailUrl String?
+  type         String   // IMAGE, VIDEO, FLOOR_PLAN, VIRTUAL_TOUR
+  caption      String?
+  isPrimary    Boolean  @default(false)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("property_media")
+}
+
+model PropertyDocument {
+  id         String   @id @default(uuid())
+  propertyId String
+  name       String
+  type       String   // TITLE_DEED, RERA, FLOOR_PLAN, BROCHURE, NOC, OTHER
+  url        String
+  isPublic   Boolean  @default(false)
+  uploadedAt DateTime @default(now())
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("property_documents")
+}
+
+model PropertyEnquiry {
+  id          String   @id @default(uuid())
+  propertyId  String
+  name        String
+  email       String
+  phone       String
+  message     String?
+  budget      Decimal? @db.Decimal(15, 2)
+  source      String   @default("PORTAL")
+  status      String   @default("NEW") // NEW, CONTACTED, CONVERTED, CLOSED
+  assignedTo  String?
+  convertedToLeadId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  property    Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@index([status])
+  @@map("property_enquiries")
+}
+
+model SavedProperty {
+  id         String   @id @default(uuid())
+  userId     String
+  propertyId String
+  createdAt  DateTime @default(now())
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@map("saved_properties")
+}
+
+// ─── CONSTRUCTION & PROJECTS ──────────────────────────────────────────────────
+
+model Project {
+  id                     String        @id @default(uuid())
+  orgId                  String
+  name                   String
+  slug                   String        @unique
+  description            String?
+  status                 ProjectStatus @default(PLANNING)
+  reraNumber             String?
+  totalArea              Decimal       @db.Decimal(15, 2)
+  builtUpArea            Decimal?      @db.Decimal(15, 2)
+  numberOfTowers         Int           @default(0)
+  numberOfUnits          Int           @default(0)
+  addressLine1           String
+  city                   String
+  state                  String
+  pincode                String
+  latitude               Float?
+  longitude              Float?
+  startDate              DateTime
+  expectedCompletionDate DateTime
+  actualCompletionDate   DateTime?
+  coverImage             String?
+  amenities              String[]
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  org                    Organization  @relation(fields: [orgId], references: [id])
+  phases                 ProjectPhase[]
+  towers                 Tower[]
+  milestones             Milestone[]
+  progressUpdates        ProgressUpdate[]
+  dailyReports           DailySiteReport[]
+  qualityChecks          QualityCheck[]
+  workOrders             WorkOrder[]
+  inspections            Inspection[]
+  budget                 ProjectBudget?
+  leads                  Lead[]
+  contractors            Contractor[]  @relation("ProjectContractors")
+
+  @@index([orgId])
+  @@index([status])
+  @@index([slug])
+  @@map("projects")
+}
+
+model ProjectPhase {
+  id          String        @id @default(uuid())
+  projectId   String
+  name        String
+  description String?
+  status      ProjectStatus @default(PLANNING)
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  towers      Tower[]
+
+  @@index([projectId])
+  @@map("project_phases")
+}
+
+model Tower {
+  id                    String        @id @default(uuid())
+  projectId             String
+  phaseId               String?
+  name                  String
+  numberOfFloors        Int
+  numberOfUnitsPerFloor Int
+  totalUnits            Int
+  status                ProjectStatus @default(PLANNING)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  project               Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase                 ProjectPhase? @relation(fields: [phaseId], references: [id])
+  floors                Floor[]
+
+  @@index([projectId])
+  @@map("towers")
+}
+
+model Floor {
+  id          String   @id @default(uuid())
+  towerId     String
+  floorNumber Int
+  label       String
+  createdAt   DateTime @default(now())
+
+  tower       Tower    @relation(fields: [towerId], references: [id], onDelete: Cascade)
+  units       Unit[]
+
+  @@unique([towerId, floorNumber])
+  @@index([towerId])
+  @@map("floors")
+}
+
+model Unit {
+  id                  String     @id @default(uuid())
+  floorId             String
+  unitNumber          String
+  bhkType             String
+  area                Decimal    @db.Decimal(10, 2)
+  carpetArea          Decimal?   @db.Decimal(10, 2)
+  builtUpArea         Decimal?   @db.Decimal(10, 2)
+  superBuiltUpArea    Decimal?   @db.Decimal(10, 2)
+  facing              String?
+  status              UnitStatus @default(AVAILABLE)
+  basePrice           Decimal    @db.Decimal(15, 2)
+  floorRisePremium    Decimal?   @db.Decimal(10, 2)
+  facingPremium       Decimal?   @db.Decimal(10, 2)
+  finalPrice          Decimal?   @db.Decimal(15, 2)
+  amenities           String[]
+  floorPlanUrl        String?
+  holdUntil           DateTime?
+  holdBy              String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  floor               Floor      @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  booking             Booking?
+  paymentSchedule     PaymentScheduleItem[]
+
+  @@unique([floorId, unitNumber])
+  @@index([floorId, status])
+  @@map("units")
+}
+
+model Milestone {
+  id                        String          @id @default(uuid())
+  projectId                 String
+  phaseId                   String?
+  name                      String
+  description               String?
+  status                    MilestoneStatus @default(NOT_STARTED)
+  plannedStartDate          DateTime
+  plannedEndDate            DateTime
+  actualStartDate           DateTime?
+  actualEndDate             DateTime?
+  completionPercentage      Int             @default(0)
+  linkedPaymentPercentage   Decimal?        @db.Decimal(5, 2)
+  dependencies              String[]
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+
+  project                   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  paymentScheduleItems      PaymentScheduleItem[]
+
+  @@index([projectId])
+  @@index([status])
+  @@map("milestones")
+}
+
+model ProgressUpdate {
+  id                  String         @id @default(uuid())
+  projectId           String
+  milestoneId         String?
+  title               String
+  description         String
+  completionPercentage Int
+  mediaUrls           String[]
+  postedById          String
+  isVisibleToBuyers   Boolean        @default(true)
+  createdAt           DateTime       @default(now())
+
+  project             Project        @relation(fields: [projectId], references: [id])
+  postedBy            User           @relation(fields: [postedById], references: [id])
+
+  @@index([projectId])
+  @@map("progress_updates")
+}
+
+model DailySiteReport {
+  id                String   @id @default(uuid())
+  projectId         String
+  reportDate        DateTime @db.Date
+  preparedById      String
+  weather           String?
+  totalLabour       Int      @default(0)
+  labourBreakdown   Json?
+  workDone          String
+  materialsUsed     Json?
+  equipmentUsed     String[]
+  issues            String?
+  mediaUrls         String[]
+  status            String   @default("DRAFT") // DRAFT, SUBMITTED, APPROVED
+  submittedAt       DateTime?
+  approvedById      String?
+  approvedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  project           Project  @relation(fields: [projectId], references: [id])
+  preparedBy        User     @relation(fields: [preparedById], references: [id])
+
+  @@unique([projectId, reportDate])
+  @@index([projectId])
+  @@map("daily_site_reports")
+}
+
+model QualityCheck {
+  id              String   @id @default(uuid())
+  projectId       String
+  activity        String
+  location        String
+  checklistItems  Json     // QualityCheckItem[]
+  overallStatus   String   // PASS, FAIL, REWORK_REQUIRED, REWORK_DONE
+  inspectedById   String
+  inspectedAt     DateTime
+  remarks         String?
+  mediaUrls       String[]
+  ncrId           String?
+  createdAt       DateTime @default(now())
+
+  project         Project  @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@map("quality_checks")
+}
+
+// ─── BUILDER ERP & FINANCE ────────────────────────────────────────────────────
+
+model Booking {
+  id                  String        @id @default(uuid())
+  bookingNumber       String        @unique
+  unitId              String        @unique
+  projectId           String
+  buyerId             String
+  brokerId            String?
+  agentId             String?
+  status              BookingStatus @default(PROVISIONAL)
+  totalAmount         Decimal       @db.Decimal(15, 2)
+  discountAmount      Decimal?      @db.Decimal(15, 2)
+  gstAmount           Decimal       @db.Decimal(15, 2)
+  finalAmount         Decimal       @db.Decimal(15, 2)
+  bookingAmount       Decimal       @db.Decimal(15, 2)
+  bookingDate         DateTime
+  agreementDate       DateTime?
+  registrationDate    DateTime?
+  possessionDate      DateTime?
+  remarks             String?
+  cancelledAt         DateTime?
+  cancellationReason  String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  unit                Unit          @relation(fields: [unitId], references: [id])
+  buyer               User          @relation("Buyer", fields: [buyerId], references: [id])
+  broker              User?         @relation("Broker", fields: [brokerId], references: [id])
+  paymentSchedule     PaymentScheduleItem[]
+  payments            Payment[]
+  documents           BookingDocument[]
+  demandLetters       DemandLetter[]
+  commission          Commission?
+  complaints          Complaint[]
+  snagItems           SnagItem[]
+
+  @@index([buyerId])
+  @@index([brokerId])
+  @@index([projectId])
+  @@index([status])
+  @@map("bookings")
+}
+
+model PaymentScheduleItem {
+  id                String    @id @default(uuid())
+  bookingId         String
+  unitId            String
+  milestoneId       String?
+  milestone         String
+  percentage        Decimal   @db.Decimal(5, 2)
+  amount            Decimal   @db.Decimal(15, 2)
+  dueDate           DateTime
+  demandLetterDate  DateTime?
+  paidDate          DateTime?
+  paidAmount        Decimal?  @db.Decimal(15, 2)
+  status            String    @default("PENDING") // PENDING, DEMAND_RAISED, PAID, OVERDUE
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  booking           Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  unit              Unit      @relation(fields: [unitId], references: [id])
+  milestoneRef      Milestone? @relation(fields: [milestoneId], references: [id])
+  payments          Payment[]
+  demandLetters     DemandLetter[]
+
+  @@index([bookingId])
+  @@index([status])
+  @@map("payment_schedule_items")
+}
+
+model Payment {
+  id                 String        @id @default(uuid())
+  paymentNumber      String        @unique
+  bookingId          String
+  scheduleItemId     String?
+  amount             Decimal       @db.Decimal(15, 2)
+  gstAmount          Decimal       @db.Decimal(15, 2)
+  tdsAmount          Decimal?      @db.Decimal(15, 2)
+  totalAmount        Decimal       @db.Decimal(15, 2)
+  status             PaymentStatus @default(PENDING)
+  method             PaymentMethod
+  gatewayOrderId     String?
+  gatewayPaymentId   String?
+  gatewaySignature   String?
+  chequeNumber       String?
+  bankName           String?
+  transactionRef     String?
+  paidAt             DateTime?
+  receiptUrl         String?
+  remarks            String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  booking            Booking       @relation(fields: [bookingId], references: [id])
+  scheduleItem       PaymentScheduleItem? @relation(fields: [scheduleItemId], references: [id])
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([gatewayPaymentId])
+  @@map("payments")
+}
+
+model DemandLetter {
+  id             String   @id @default(uuid())
+  bookingId      String
+  scheduleItemId String
+  letterNumber   String   @unique
+  amount         Decimal  @db.Decimal(15, 2)
+  gstAmount      Decimal  @db.Decimal(15, 2)
+  totalAmount    Decimal  @db.Decimal(15, 2)
+  dueDate        DateTime
+  pdfUrl         String?
+  status         String   @default("ISSUED") // ISSUED, VIEWED, PAID, OVERDUE
+  issuedAt       DateTime @default(now())
+  viewedAt       DateTime?
+
+  booking        Booking          @relation(fields: [bookingId], references: [id])
+  scheduleItem   PaymentScheduleItem @relation(fields: [scheduleItemId], references: [id])
+
+  @@index([bookingId])
+  @@map("demand_letters")
+}
+
+model BookingDocument {
+  id                String   @id @default(uuid())
+  bookingId         String
+  type              String   // BOOKING_FORM, ALLOTMENT_LETTER, AGREEMENT_COPY, DEMAND_LETTER, RECEIPT, NOC, OTHER
+  name              String
+  url               String
+  isCustomerVisible Boolean  @default(true)
+  uploadedAt        DateTime @default(now())
+
+  booking           Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("booking_documents")
+}
+
+model ProjectBudget {
+  id               String      @id @default(uuid())
+  projectId        String      @unique
+  fiscalYear       String
+  totalBudget      Decimal     @db.Decimal(15, 2)
+  sanctionedBudget Decimal     @db.Decimal(15, 2)
+  spentAmount      Decimal     @db.Decimal(15, 2) @default(0)
+  committedAmount  Decimal     @db.Decimal(15, 2) @default(0)
+  forecastAmount   Decimal     @db.Decimal(15, 2) @default(0)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  project          Project     @relation(fields: [projectId], references: [id])
+  heads            BudgetHead[]
+  expenditures     Expenditure[]
+
+  @@map("project_budgets")
+}
+
+model BudgetHead {
+  id              String       @id @default(uuid())
+  budgetId        String
+  name            String
+  category        String       // CIVIL, ELECTRICAL, PLUMBING, FINISHING, EXTERNAL, ADMIN, OTHER
+  allocatedAmount Decimal      @db.Decimal(15, 2)
+  spentAmount     Decimal      @db.Decimal(15, 2) @default(0)
+  committedAmount Decimal      @db.Decimal(15, 2) @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  budget          ProjectBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  expenditures    Expenditure[]
+
+  @@index([budgetId])
+  @@map("budget_heads")
+}
+
+model Expenditure {
+  id            String        @id @default(uuid())
+  projectId     String
+  budgetHeadId  String
+  description   String
+  amount        Decimal       @db.Decimal(15, 2)
+  gstAmount     Decimal       @db.Decimal(15, 2) @default(0)
+  totalAmount   Decimal       @db.Decimal(15, 2)
+  vendorId      String?
+  invoiceNumber String?
+  invoiceDate   DateTime
+  paymentStatus PaymentStatus @default(PENDING)
+  paidAt        DateTime?
+  approvedById  String?
+  receiptUrls   String[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  budget        ProjectBudget @relation(fields: [projectId], references: [projectId])
+  budgetHead    BudgetHead    @relation(fields: [budgetHeadId], references: [id])
+
+  @@index([projectId])
+  @@map("expenditures")
+}
+
+// ─── BROKER CRM ───────────────────────────────────────────────────────────────
+
+model Lead {
+  id                 String     @id @default(uuid())
+  name               String
+  email              String?
+  phone              String
+  alternatePhone     String?
+  source             LeadSource
+  stage              LeadStage  @default(NEW)
+  score              Int        @default(0)
+  budgetMin          Decimal?   @db.Decimal(15, 2)
+  budgetMax          Decimal?   @db.Decimal(15, 2)
+  preferredLocations String[]
+  preferredBhk       String[]
+  propertyId         String?
+  projectId          String?
+  assignedToId       String
+  orgId              String
+  notes              String?
+  nextFollowUpDate   DateTime?
+  lostReason         String?
+  closedAt           DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  assignedTo         User         @relation("AssignedBroker", fields: [assignedToId], references: [id])
+  org                Organization @relation(fields: [orgId], references: [id])
+  property           Property?    @relation(fields: [propertyId], references: [id])
+  project            Project?     @relation(fields: [projectId], references: [id])
+  activities         LeadActivity[]
+  siteVisits         SiteVisit[]
+
+  @@index([assignedToId])
+  @@index([orgId])
+  @@index([stage])
+  @@index([phone])
+  @@map("leads")
+}
+
+model LeadActivity {
+  id             String   @id @default(uuid())
+  leadId         String
+  type           String   // CALL, EMAIL, WHATSAPP, MEETING, SITE_VISIT, FOLLOW_UP, NOTE, STAGE_CHANGE
+  title          String
+  description    String?
+  outcome        String?
+  doneById       String
+  doneAt         DateTime
+  nextAction     String?
+  nextActionDate DateTime?
+  attachmentUrls String[]
+  createdAt      DateTime @default(now())
+
+  lead           Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@map("lead_activities")
+}
+
+model SiteVisit {
+  id             String    @id @default(uuid())
+  leadId         String
+  projectId      String
+  scheduledAt    DateTime
+  conductedAt    DateTime?
+  conductedById  String
+  status         String    @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, NO_SHOW
+  feedback       String?
+  rating         Int?
+  interestedUnits String[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  lead           Lead      @relation(fields: [leadId], references: [id])
+
+  @@index([leadId])
+  @@index([scheduledAt])
+  @@map("site_visits")
+}
+
+model Customer {
+  id           String   @id @default(uuid())
+  userId       String?  @unique
+  orgId        String
+  name         String
+  email        String
+  phone        String
+  pan          String?
+  aadhaar      String?
+  addressLine1 String?
+  city         String?
+  state        String?
+  pincode      String?
+  occupation   String?
+  annualIncome Decimal? @db.Decimal(15, 2)
+  tags         String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  org          Organization    @relation(fields: [orgId], references: [id])
+  documents    CustomerDocument[]
+
+  @@index([orgId])
+  @@index([phone])
+  @@map("customers")
+}
+
+model CustomerDocument {
+  id          String   @id @default(uuid())
+  customerId  String
+  type        String   // PAN, AADHAAR, PASSPORT, FORM_16, BANK_STATEMENT, SALARY_SLIP, OTHER
+  name        String
+  url         String
+  uploadedAt  DateTime @default(now())
+  verifiedAt  DateTime?
+
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_documents")
+}
+
+model Commission {
+  id               String           @id @default(uuid())
+  bookingId        String           @unique
+  brokerId         String
+  agentId          String?
+  amount           Decimal          @db.Decimal(15, 2)
+  gstAmount        Decimal          @db.Decimal(15, 2)
+  tdsAmount        Decimal          @db.Decimal(15, 2) @default(0)
+  netPayable       Decimal          @db.Decimal(15, 2)
+  percentage       Decimal          @db.Decimal(5, 2)
+  status           CommissionStatus @default(PENDING)
+  approvedById     String?
+  approvedAt       DateTime?
+  invoiceNumber    String?
+  invoiceUrl       String?
+  paidAt           DateTime?
+  paymentReference String?
+  remarks          String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  booking          Booking          @relation(fields: [bookingId], references: [id])
+
+  @@index([brokerId])
+  @@index([status])
+  @@map("commissions")
+}
+
+// ─── CONTRACTOR ───────────────────────────────────────────────────────────────
+
+model Contractor {
+  id                 String             @id @default(uuid())
+  userId             String?
+  orgId              String
+  companyName        String
+  gstin              String?
+  pan                String?
+  trades             String[]
+  licenseNumber      String?
+  insuranceNumber    String?
+  bankName           String?
+  accountNumber      String?
+  ifsc               String?
+  verificationStatus VerificationStatus @default(PENDING)
+  rating             Decimal?           @db.Decimal(3, 2)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  org                Organization       @relation(fields: [orgId], references: [id])
+  projects           Project[]          @relation("ProjectContractors")
+  workOrders         WorkOrder[]
+  laborAttendance    LaborAttendance[]
+  materialIndents    MaterialIndent[]
+  ncrReports         NCReport[]
+
+  @@index([orgId])
+  @@map("contractors")
+}
+
+model WorkOrder {
+  id                  String          @id @default(uuid())
+  woNumber            String          @unique
+  projectId           String
+  contractorId        String
+  title               String
+  scope               String
+  startDate           DateTime
+  endDate             DateTime
+  contractValue       Decimal         @db.Decimal(15, 2)
+  retentionPercentage Decimal         @db.Decimal(5, 2) @default(5)
+  status              WorkOrderStatus @default(DRAFT)
+  termsUrl            String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  project             Project         @relation(fields: [projectId], references: [id])
+  contractor          Contractor      @relation(fields: [contractorId], references: [id])
+  milestones          WorkOrderMilestone[]
+  bills               RABill[]
+
+  @@index([projectId])
+  @@index([contractorId])
+  @@map("work_orders")
+}
+
+model WorkOrderMilestone {
+  id            String    @id @default(uuid())
+  workOrderId   String
+  description   String
+  percentage    Decimal   @db.Decimal(5, 2)
+  amount        Decimal   @db.Decimal(15, 2)
+  completedAt   DateTime?
+  status        String    @default("PENDING") // PENDING, COMPLETED, APPROVED
+
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+  @@map("work_order_milestones")
+}
+
+model RABill {
+  id              String    @id @default(uuid())
+  workOrderId     String
+  billNumber      String    @unique
+  billDate        DateTime
+  grossAmount     Decimal   @db.Decimal(15, 2)
+  retentionAmount Decimal   @db.Decimal(15, 2)
+  previouslyPaid  Decimal   @db.Decimal(15, 2) @default(0)
+  currentDue      Decimal   @db.Decimal(15, 2)
+  status          String    @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, CERTIFIED, PAID
+  certifiedById   String?
+  certifiedAt     DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id])
+
+  @@index([workOrderId])
+  @@map("ra_bills")
+}
+
+model LaborAttendance {
+  id             String     @id @default(uuid())
+  projectId      String
+  contractorId   String
+  date           DateTime   @db.Date
+  labourBreakdown Json
+  totalPresent   Int
+  submittedById  String
+  submittedAt    DateTime   @default(now())
+
+  contractor     Contractor @relation(fields: [contractorId], references: [id])
+
+  @@unique([projectId, contractorId, date])
+  @@index([projectId])
+  @@map("labor_attendance")
+}
+
+model MaterialIndent {
+  id           String     @id @default(uuid())
+  projectId    String
+  contractorId String
+  items        Json       // [{material, quantity, unit, specification}]
+  status       String     @default("PENDING") // PENDING, APPROVED, REJECTED, ORDERED
+  requestedAt  DateTime   @default(now())
+  approvedById String?
+  approvedAt   DateTime?
+  remarks      String?
+
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+
+  @@index([projectId])
+  @@index([contractorId])
+  @@map("material_indents")
+}
+
+// ─── MATERIAL MARKETPLACE ─────────────────────────────────────────────────────
+
+model Supplier {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  companyName        String
+  slug               String             @unique
+  gstin              String?
+  categories         String[]
+  rating             Decimal?           @db.Decimal(3, 2)
+  totalOrders        Int                @default(0)
+  onTimeDelivery     Decimal?           @db.Decimal(5, 2)
+  verificationStatus VerificationStatus @default(PENDING)
+  bankName           String?
+  accountNumber      String?
+  ifsc               String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  products           Product[]
+  purchaseOrders     PurchaseOrder[]
+  rfqResponses       RFQResponse[]
+
+  @@index([verificationStatus])
+  @@map("suppliers")
+}
+
+model ProductCategory {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  parentId    String?
+  description String?
+  icon        String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  parent      ProductCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    ProductCategory[] @relation("CategoryHierarchy")
+  products    Product[]
+
+  @@map("product_categories")
+}
+
+model Product {
+  id             String          @id @default(uuid())
+  supplierId     String
+  categoryId     String
+  name           String
+  sku            String          @unique
+  description    String?
+  specifications Json
+  unit           String
+  moq            Int             @default(1)
+  leadTimeDays   Int             @default(7)
+  basePrice      Decimal         @db.Decimal(15, 2)
+  gstRate        Decimal         @db.Decimal(5, 2)
+  imageUrls      String[]
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  supplier       Supplier        @relation(fields: [supplierId], references: [id])
+  category       ProductCategory @relation(fields: [categoryId], references: [id])
+  orderItems     POItem[]
+
+  @@index([supplierId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model RFQRequest {
+  id          String        @id @default(uuid())
+  projectId   String
+  title       String
+  items       Json          // [{productName, quantity, unit, specification}]
+  deadline    DateTime
+  status      String        @default("OPEN") // OPEN, CLOSED, CANCELLED
+  createdById String
+  createdAt   DateTime      @default(now())
+
+  responses   RFQResponse[]
+
+  @@index([projectId])
+  @@map("rfq_requests")
+}
+
+model RFQResponse {
+  id         String     @id @default(uuid())
+  rfqId      String
+  supplierId String
+  items      Json       // quoted items with prices
+  totalAmount Decimal   @db.Decimal(15, 2)
+  validUntil DateTime
+  notes      String?
+  status     String     @default("SUBMITTED") // SUBMITTED, ACCEPTED, REJECTED
+  createdAt  DateTime   @default(now())
+
+  rfq        RFQRequest @relation(fields: [rfqId], references: [id])
+  supplier   Supplier   @relation(fields: [supplierId], references: [id])
+
+  @@index([rfqId])
+  @@map("rfq_responses")
+}
+
+model PurchaseOrder {
+  id                    String      @id @default(uuid())
+  poNumber              String      @unique
+  projectId             String
+  supplierId            String
+  status                OrderStatus @default(DRAFT)
+  totalAmount           Decimal     @db.Decimal(15, 2)
+  gstAmount             Decimal     @db.Decimal(15, 2)
+  finalAmount           Decimal     @db.Decimal(15, 2)
+  deliveryAddress       String
+  expectedDeliveryDate  DateTime
+  actualDeliveryDate    DateTime?
+  termsAndConditions    String?
+  createdById           String
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  supplier              Supplier    @relation(fields: [supplierId], references: [id])
+  items                 POItem[]
+  deliveries            Delivery[]
+  grnRecords            GRNRecord[]
+
+  @@index([projectId])
+  @@index([supplierId])
+  @@map("purchase_orders")
+}
+
+model POItem {
+  id               String        @id @default(uuid())
+  poId             String
+  productId        String
+  productName      String
+  quantity         Decimal       @db.Decimal(10, 2)
+  unit             String
+  unitPrice        Decimal       @db.Decimal(15, 2)
+  gstRate          Decimal       @db.Decimal(5, 2)
+  totalAmount      Decimal       @db.Decimal(15, 2)
+  receivedQuantity Decimal?      @db.Decimal(10, 2)
+
+  po               PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product          Product       @relation(fields: [productId], references: [id])
+
+  @@index([poId])
+  @@map("po_items")
+}
+
+model Delivery {
+  id              String        @id @default(uuid())
+  poId            String
+  trackingNumber  String?
+  carrier         String?
+  dispatchedAt    DateTime?
+  estimatedArrival DateTime?
+  deliveredAt     DateTime?
+  status          String        @default("PENDING") // PENDING, DISPATCHED, IN_TRANSIT, DELIVERED
+  driverName      String?
+  driverPhone     String?
+  vehicleNumber   String?
+  mediaUrls       String[]
+  createdAt       DateTime      @default(now())
+
+  po              PurchaseOrder @relation(fields: [poId], references: [id])
+
+  @@index([poId])
+  @@map("deliveries")
+}
+
+model GRNRecord {
+  id              String        @id @default(uuid())
+  poId            String
+  grnNumber       String        @unique
+  receivedItems   Json          // [{productId, orderedQty, receivedQty, rejectedQty, reason}]
+  inspectedById   String
+  inspectedAt     DateTime
+  status          String        // ACCEPTED, PARTIALLY_ACCEPTED, REJECTED
+  remarks         String?
+  createdAt       DateTime      @default(now())
+
+  po              PurchaseOrder @relation(fields: [poId], references: [id])
+
+  @@index([poId])
+  @@map("grn_records")
+}
+
+// ─── SITE ENGINEER PORTAL ─────────────────────────────────────────────────────
+
+model Inspection {
+  id             String           @id @default(uuid())
+  projectId      String
+  activity       String
+  location       String
+  tower          String?
+  floor          Int?
+  unit           String?
+  scheduledDate  DateTime
+  conductedDate  DateTime?
+  inspectorId    String
+  status         InspectionStatus @default(SCHEDULED)
+  checklistItems Json             // InspectionItem[]
+  testResultIds  String[]
+  mediaUrls      String[]
+  remarks        String?
+  approvalId     String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  project        Project          @relation(fields: [projectId], references: [id])
+  inspector      User             @relation(fields: [inspectorId], references: [id])
+  ncrReports     NCReport[]
+  testResults    TestResult[]
+
+  @@index([projectId])
+  @@index([inspectorId])
+  @@map("inspections")
+}
+
+model NCReport {
+  id               String     @id @default(uuid())
+  ncrNumber        String     @unique
+  inspectionId     String
+  projectId        String
+  issuedToId       String
+  description      String
+  severity         String     // MINOR, MAJOR, CRITICAL
+  dueDate          DateTime
+  status           String     @default("OPEN") // OPEN, UNDER_REVIEW, RECTIFIED, CLOSED, DISPUTED
+  rootCause        String?
+  correctiveAction String?
+  preventiveAction String?
+  beforeMediaUrls  String[]
+  afterMediaUrls   String[]
+  closedAt         DateTime?
+  closedById       String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  inspection       Inspection @relation(fields: [inspectionId], references: [id])
+  issuedTo         Contractor @relation(fields: [issuedToId], references: [id])
+
+  @@index([projectId])
+  @@index([inspectionId])
+  @@index([status])
+  @@map("ncr_reports")
+}
+
+model TestResult {
+  id             String      @id @default(uuid())
+  projectId      String
+  inspectionId   String?
+  testType       String
+  sampleId       String
+  location       String
+  date           DateTime
+  result         String
+  unit           String
+  standardValue  String
+  status         String      // PASS, FAIL
+  labName        String?
+  certificateUrl String?
+  createdAt      DateTime    @default(now())
+
+  inspection     Inspection? @relation(fields: [inspectionId], references: [id])
+
+  @@index([projectId])
+  @@map("test_results")
+}
+
+model Approval {
+  id           String   @id @default(uuid())
+  projectId    String
+  type         String   // POUR_CARD, SLAB, WATERPROOFING, ELECTRICAL, OTHER
+  location     String
+  requestedById String
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedById String?
+  approvedAt   DateTime?
+  rejectedReason String?
+  mediaUrls    String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([projectId])
+  @@map("approvals")
+}
+
+// ─── BUYER PORTAL ─────────────────────────────────────────────────────────────
+
+model Complaint {
+  id                String    @id @default(uuid())
+  complaintNumber   String    @unique
+  bookingId         String
+  raisedById        String
+  category          String
+  subject           String
+  description       String
+  priority          String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  status            String    @default("OPEN")   // OPEN, ASSIGNED, IN_PROGRESS, RESOLVED, CLOSED
+  assignedToId      String?
+  resolvedAt        DateTime?
+  resolutionNote    String?
+  mediaUrls         String[]
+  slaDeadline       DateTime
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  booking           Booking   @relation(fields: [bookingId], references: [id])
+  updates           ComplaintUpdate[]
+
+  @@index([bookingId])
+  @@index([status])
+  @@map("complaints")
+}
+
+model ComplaintUpdate {
+  id           String    @id @default(uuid())
+  complaintId  String
+  message      String
+  updatedById  String
+  isInternal   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  complaint    Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId])
+  @@map("complaint_updates")
+}
+
+model SnagItem {
+  id          String   @id @default(uuid())
+  bookingId   String
+  unit        String
+  description String
+  location    String
+  status      String   @default("OPEN") // OPEN, IN_PROGRESS, FIXED, ACCEPTED
+  raisedAt    DateTime @default(now())
+  fixedAt     DateTime?
+  beforePhoto String?
+  afterPhoto  String?
+
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@map("snag_items")
+}
+
+// ─── AI & ANALYTICS ───────────────────────────────────────────────────────────
+
+model AiRequest {
+  id           String   @id @default(uuid())
+  userId       String
+  type         String   // COST_ESTIMATE, VALUATION, RISK_DETECT, LEAD_SCORE, DOC_ANALYSIS
+  input        Json
+  output       Json?
+  model        String
+  tokensUsed   Int?
+  latencyMs    Int?
+  status       String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  error        String?
+  createdAt    DateTime @default(now())
+  completedAt  DateTime?
+
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@map("ai_requests")
+}
+
+model CostEstimate {
+  id           String   @id @default(uuid())
+  requestId    String   @unique
+  city         String
+  state        String
+  area         Decimal  @db.Decimal(10, 2)
+  specs        String
+  minCost      Decimal  @db.Decimal(15, 2)
+  maxCost      Decimal  @db.Decimal(15, 2)
+  avgCost      Decimal  @db.Decimal(15, 2)
+  breakdown    Json
+  confidence   Int
+  validUntil   DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([city, state])
+  @@map("cost_estimates")
+}
+
+model PropertyValuation {
+  id             String   @id @default(uuid())
+  propertyId     String?
+  address        String
+  area           Decimal  @db.Decimal(10, 2)
+  type           String
+  estimatedValue Decimal  @db.Decimal(15, 2)
+  pricePerSqft   Decimal  @db.Decimal(10, 2)
+  comparables    Json
+  marketTrend    String
+  confidence     Int
+  createdAt      DateTime @default(now())
+
+  @@index([propertyId])
+  @@map("property_valuations")
+}
+
+model RiskFlag {
+  id          String   @id @default(uuid())
+  projectId   String
+  type        String   // BUDGET_OVERRUN, SCHEDULE_DELAY, QUALITY_FAILURE, LEGAL_ISSUE, SAFETY_CONCERN
+  severity    String   // LOW, MEDIUM, HIGH, CRITICAL
+  title       String
+  description String
+  status      String   @default("ACTIVE") // ACTIVE, ACKNOWLEDGED, RESOLVED, FALSE_POSITIVE
+  detectedAt  DateTime @default(now())
+  resolvedAt  DateTime?
+
+  @@index([projectId])
+  @@index([status, severity])
+  @@map("risk_flags")
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(uuid())
+  userId     String?
+  event      String
+  properties Json
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([event])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("analytics_events")
+}
