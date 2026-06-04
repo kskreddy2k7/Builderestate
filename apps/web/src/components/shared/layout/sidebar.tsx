@@ -23,7 +23,7 @@ export function Sidebar({ navItems, title, open, collapsed, onClose, onCollapseT
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-30 flex flex-col border-r border-border bg-card transition-all duration-300',
+          'fixed inset-y-0 left-0 z-30 flex flex-col border-r border-border/50 bg-card/95 backdrop-blur-xl transition-all duration-300 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]',
           collapsed ? 'w-16' : 'w-64',
           // Mobile: slide in/out
           'lg:translate-x-0',
@@ -115,11 +115,11 @@ function NavItemRow({
         href={item.href}
         title={collapsed ? item.label : undefined}
         className={cn(
-          'group flex h-9 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors',
+          'group flex h-[38px] items-center gap-3 rounded-lg px-3 text-sm font-medium transition-all duration-200',
           isActive
-            ? 'bg-primary/10 text-primary'
-            : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-          collapsed && 'justify-center px-2',
+            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+            : 'text-muted-foreground hover:bg-accent/80 hover:text-foreground hover:translate-x-1',
+          collapsed && 'justify-center px-2 hover:translate-x-0',
         )}
       >
         <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{item.icon}</span>
@@ -128,10 +128,10 @@ function NavItemRow({
             <span className="flex-1 truncate">{item.label}</span>
             {item.badge !== undefined && (
               <span className={cn(
-                'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-medium',
+                'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tracking-wide',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground',
+                  ? 'bg-primary-foreground text-primary shadow-sm'
+                  : 'bg-primary/10 text-primary',
               )}>
                 {item.badge}
               </span>

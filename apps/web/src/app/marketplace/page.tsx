@@ -57,34 +57,40 @@ export default function MarketplacePage() {
       </header>
 
       {/* Hero */}
-      <section className="bg-gradient-to-b from-brand-950 to-brand-900 py-20 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+      <section className="relative overflow-hidden bg-brand-950 py-32 text-white">
+        {/* Decorative background gradients */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[80px] pointer-events-none" />
+        
+        <div className="container relative z-10 mx-auto px-4 text-center">
+          <h1 className="mb-6 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-7xl text-transparent bg-clip-text bg-gradient-to-r from-white via-brand-100 to-brand-300">
             Find your perfect property
           </h1>
-          <p className="mb-8 text-brand-200 text-lg max-w-xl mx-auto">
+          <p className="mb-10 text-brand-200 text-lg md:text-xl max-w-2xl mx-auto font-light">
             From budget apartments to luxury villas — verified listings from trusted builders across India.
           </p>
 
           {/* Search bar */}
-          <div className="mx-auto max-w-2xl">
-            <div className="flex flex-col gap-2 rounded-xl bg-white p-3 shadow-elevated sm:flex-row">
-              <div className="flex flex-1 items-center gap-2 rounded-lg bg-muted px-3 py-2">
-                <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="mx-auto max-w-3xl mt-8">
+            <div className="flex flex-col gap-3 rounded-2xl glass p-3 shadow-[0_8px_30px_rgb(0,0,0,0.3)] sm:flex-row">
+              <div className="flex flex-1 items-center gap-3 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-md border border-white/10 transition-colors focus-within:border-primary/50 focus-within:bg-white/20">
+                <MapPin className="h-5 w-5 shrink-0 text-brand-200" />
                 <input
                   type="text"
                   placeholder="City, locality, or project name"
-                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  className="flex-1 bg-transparent text-sm md:text-base text-white placeholder:text-brand-200/70 focus:outline-none"
                 />
               </div>
-              <select className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
-                <option value="">All types</option>
-                <option value="apartment">Apartment</option>
-                <option value="house">House / Villa</option>
-                <option value="land">Land / Plot</option>
-              </select>
-              <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
-                <Search className="h-4 w-4" />
+              <div className="relative flex-shrink-0">
+                <select className="h-full w-full appearance-none rounded-xl border border-white/10 bg-white/10 px-4 py-3 pr-10 text-sm md:text-base text-white backdrop-blur-md focus:outline-none focus:ring-1 focus:ring-primary/50 [&>option]:bg-brand-950">
+                  <option value="">All types</option>
+                  <option value="apartment">Apartment</option>
+                  <option value="house">House / Villa</option>
+                  <option value="land">Land / Plot</option>
+                </select>
+              </div>
+              <button className="inline-flex h-12 md:h-auto items-center justify-center gap-2 rounded-xl bg-primary px-8 text-base font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:-translate-y-0.5 hover:shadow-primary/40 hover:bg-primary/90">
+                <Search className="h-5 w-5" />
                 Search
               </button>
             </div>
@@ -110,12 +116,15 @@ export default function MarketplacePage() {
               <Link
                 key={city.name}
                 href={`/marketplace?city=${city.name}`}
-                className="group flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/50 hover:shadow-card-hover"
+                className="group relative flex items-center gap-5 rounded-2xl border border-border/50 glass-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden"
               >
-                <div className="text-4xl">{city.img}</div>
-                <div>
-                  <p className="font-medium group-hover:text-primary transition-colors">{city.name}</p>
-                  <p className="text-sm text-muted-foreground">{city.count}</p>
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="relative z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl shadow-sm ring-1 ring-border/50 transition-transform duration-300 group-hover:scale-110 group-hover:ring-primary/30">
+                  {city.img}
+                </div>
+                <div className="relative z-10">
+                  <p className="text-lg font-semibold tracking-tight transition-colors group-hover:text-primary">{city.name}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{city.count}</p>
                 </div>
               </Link>
             ))}

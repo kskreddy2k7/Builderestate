@@ -58,7 +58,7 @@ export function PropertyCard({ property, variant = 'grid', className }: Property
   if (variant === 'list') {
     return (
       <Link href={`/marketplace/${property.slug}`} className={cn(
-        'group flex gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-card-hover',
+        'group flex gap-4 rounded-2xl border border-border/50 glass-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]',
         className,
       )}>
         {/* Image */}
@@ -101,7 +101,7 @@ export function PropertyCard({ property, variant = 'grid', className }: Property
 
   return (
     <div className={cn(
-      'group relative overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/40 hover:shadow-card-hover',
+      'group relative overflow-hidden rounded-2xl border border-border/50 glass-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]',
       className,
     )}>
       {/* Image */}
@@ -115,17 +115,18 @@ export function PropertyCard({ property, variant = 'grid', className }: Property
             </div>
           )}
           {/* Overlays */}
-          <div className="absolute inset-x-3 top-3 flex items-center justify-between">
-            <Badge variant={txn.variant as any}>{txn.label}</Badge>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 transition-opacity duration-300 group-hover:opacity-40" />
+          <div className="absolute inset-x-3 top-3 flex items-center justify-between z-10">
+            <Badge variant={txn.variant as any} className="backdrop-blur-md bg-background/80 shadow-sm border-white/20">{txn.label}</Badge>
             {property.reraStatus === 'VERIFIED' && (
-              <div className="flex items-center gap-1 rounded-full bg-success-50 px-2 py-1 text-xs font-medium text-success-700">
+              <div className="flex items-center gap-1 rounded-full bg-success-500/20 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold tracking-wide text-success-700 dark:text-success-400 border border-success-500/30 shadow-sm">
                 <Shield className="h-3 w-3" />RERA
               </div>
             )}
           </div>
           {property.isFeatured && (
-            <div className="absolute bottom-3 left-3 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">
-              Featured
+            <div className="absolute bottom-3 left-3 rounded-full bg-gradient-to-r from-accent to-accent/80 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-accent-foreground shadow-md z-10">
+              FEATURED
             </div>
           )}
         </div>
@@ -135,10 +136,10 @@ export function PropertyCard({ property, variant = 'grid', className }: Property
       {isAuthenticated && (
         <button
           onClick={(e) => { e.preventDefault(); toggleSave(property.id) }}
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm transition-all hover:bg-white hover:scale-110"
+          className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm shadow-sm transition-all duration-300 hover:bg-white hover:scale-110 hover:text-danger-500 text-muted-foreground"
           aria-label="Save property"
         >
-          <Heart className="h-4 w-4 text-muted-foreground" />
+          <Heart className="h-4 w-4" />
         </button>
       )}
 

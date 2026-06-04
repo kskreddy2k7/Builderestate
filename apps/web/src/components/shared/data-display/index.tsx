@@ -26,17 +26,20 @@ export function StatsCard({ title, value, description, icon: Icon, trend, classN
   }
 
   return (
-    <div className={cn('rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-card-hover', className)}>
-      <div className="flex items-start justify-between">
+    <div className={cn('relative overflow-hidden rounded-xl border border-border/50 glass-card p-5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group', className)}>
+      {/* Subtle background gradient glow on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      
+      <div className="relative z-10 flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight text-foreground">{value}</p>
           {description && (
-            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
           )}
         </div>
         {Icon && (
-          <div className="rounded-lg bg-primary/10 p-2.5">
+          <div className="rounded-xl bg-primary/10 p-3 ring-1 ring-primary/20 transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_15px_-3px_rgba(var(--primary),0.3)]">
             <Icon className="h-5 w-5 text-primary" />
           </div>
         )}
@@ -179,15 +182,21 @@ export function ProgressBar({ value, max = 100, label, showValue = false, size =
           {showValue && <span className="font-medium">{percentage}%</span>}
         </div>
       )}
-      <div className={cn('w-full overflow-hidden rounded-full bg-secondary', heights[size])}>
+      <div className={cn('w-full overflow-hidden rounded-full bg-secondary/80 ring-1 ring-inset ring-border/50', heights[size])}>
         <div
-          className={cn('h-full rounded-full transition-all duration-500', colors[variant])}
+          className={cn(
+            'h-full rounded-full transition-all duration-1000 ease-out relative',
+            colors[variant]
+          )}
           style={{ width: `${percentage}%` }}
           role="progressbar"
           aria-valuenow={percentage}
           aria-valuemin={0}
           aria-valuemax={100}
-        />
+        >
+          {/* Shine effect */}
+          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-[shimmer_2s_infinite]" />
+        </div>
       </div>
     </div>
   )
@@ -211,12 +220,12 @@ interface SectionProps {
 
 export function Section({ title, description, children, actions, className }: SectionProps) {
   return (
-    <section className={cn('rounded-xl border border-border bg-card', className)}>
+    <section className={cn('rounded-xl border border-border/50 glass-card overflow-hidden', className)}>
       {(title || actions) && (
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex items-center justify-between border-b border-border/50 bg-muted/20 px-5 py-4 backdrop-blur-sm">
           <div>
-            {title && <h2 className="text-sm font-semibold">{title}</h2>}
-            {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+            {title && <h2 className="text-base font-semibold tracking-tight">{title}</h2>}
+            {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>
