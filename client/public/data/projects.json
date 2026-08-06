@@ -1,0 +1,7 @@
+[
+  { "id": "proj-1", "name": "Prestige Kokapet Lakefront", "developer": "Prestige Group", "city": "Hyderabad" },
+  { "id": "proj-2", "name": "DLF Celestial Towers", "developer": "DLF", "city": "Hyderabad" },
+  { "id": "proj-3", "name": "Sobha Royal Meadows", "developer": "Sobha Realty", "city": "Bengaluru" },
+  { "id": "proj-4", "name": "Brigade Golden Vista", "developer": "Brigade Group", "city": "Bengaluru" },
+  { "id": "proj-5", "name": "Lodha Crown Worli Seafront", "developer": "Lodha", "city": "Mumbai" }
+]
