@@ -120,8 +120,21 @@ export default function Home() {
   const canvasRef = useRef(null);
   const activeImgRef = useRef(null);
 
-  const [isPreloaded, setIsPreloaded] = useState(true);
+  const [preloadProgress, setPreloadProgress] = useState(0);
+  const [isPreloaded, setIsPreloaded] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [hasScrolled, setHasScrolled] = useState(false);
+
+  const imagesRef = useRef([]);
+  const frameTrackerRef = useRef({ current: 1, target: 1 });
+  const lastDrawnFrameRef = useRef(0);
+
+  function getFramePath(index) {
+    const paddedIndex = String(index).padStart(4, '0');
+    const base = import.meta.env.BASE_URL || '/';
+    const cleanBase = base.endsWith('/') ? base : base + '/';
+    return `${cleanBase}videos/WITH-OUT-ANY-TEXT-I-WANT-A-PRI/${paddedIndex}.jpg`;
+  }
 
   useEffect(() => {
     // 1. Listen for global modal triggers
@@ -160,21 +173,174 @@ export default function Home() {
     gsap.ticker.add(gsapTickerFunc);
     gsap.ticker.lagSmoothing(0);
 
-    // 4. Page Scroll Progress Tracker for premium bar
-    const st = ScrollTrigger.create({
-      start: 0,
-      end: 'max',
-      onUpdate: (self) => {
-        setScrollProgress(self.progress);
+    // 4. Preload frame images
+    let loadedCount = 0;
+    let isMounted = true;
+
+    const loadImage = (index) => {
+      return new Promise((resolve) => {
+        if (imagesRef.current[index]) return resolve();
+        
+        const img = new Image();
+        img.src = getFramePath(index);
+        
+        const onComplete = () => {
+          imagesRef.current[index] = img;
+          loadedCount++;
+          if (isMounted) {
+            setPreloadProgress(Math.round((loadedCount / TOTAL_FRAMES) * 100));
+          }
+          resolve();
+        };
+
+        if (img.decode) {
+          img.decode().then(onComplete).catch(onComplete);
+        } else {
+          img.onload = onComplete;
+          img.onerror = onComplete;
+        }
+      });
+    };
+
+    let animationFrameId;
+
+    const loadAllFrames = async () => {
+      // 1. Load first frame immediately for instant display
+      await loadImage(1);
+      if (isMounted) {
+        setIsPreloaded(true);
+        resizeCanvas();
+        drawFrame(1);
       }
-    });
+
+      // Safety timeout to guarantee Home page is visible in <= 300ms
+      const safetyTimer = setTimeout(() => {
+        if (isMounted) setIsPreloaded(true);
+      }, 300);
+
+      // 2. Setup GSAP ScrollTrigger to pin hero until full 240 frame video completes
+      if (isMounted) {
+        const st = ScrollTrigger.create({
+          trigger: trackRef.current,
+          start: 'top top',
+          end: '+=7000',
+          pin: true,
+          pinSpacing: true,
+          scrub: 0.1,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => {
+            if (!isMounted) return;
+            const progress = self.progress;
+            setScrollProgress(progress);
+            if (progress > 0.01) setHasScrolled(true);
+
+            const targetFrame = Math.max(
+              1, 
+              Math.min(TOTAL_FRAMES, Math.round(progress * (TOTAL_FRAMES - 1)) + 1)
+            );
+            frameTrackerRef.current.target = targetFrame;
+            drawFrame(targetFrame);
+          }
+        });
+
+        const tick = () => {
+          if (!isMounted) return;
+          const target = frameTrackerRef.current.target;
+          const delta = target - frameTrackerRef.current.current;
+          
+          if (Math.abs(delta) > 0.001) {
+            frameTrackerRef.current.current += delta * 0.4;
+            const roundedFrame = Math.round(frameTrackerRef.current.current);
+            if (roundedFrame !== lastDrawnFrameRef.current) {
+              drawFrame(roundedFrame);
+              lastDrawnFrameRef.current = roundedFrame;
+            }
+          }
+          animationFrameId = requestAnimationFrame(tick);
+        };
+        tick();
+      }
+
+      // 3. Preload remaining frames in background asynchronously
+      const batchSize = 30;
+      for (let i = 2; i <= TOTAL_FRAMES; i += batchSize) {
+        if (!isMounted) return;
+        const promises = [];
+        const end = Math.min(i + batchSize - 1, TOTAL_FRAMES);
+        for (let j = i; j <= end; j++) {
+          promises.push(loadImage(j));
+        }
+        await Promise.all(promises);
+      }
+      clearTimeout(safetyTimer);
+    };
+
+    loadAllFrames();
+
+    // 5. Hardware Sharp Canvas Rendering
+    const drawFrame = (frameIndex) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d', { alpha: false });
+      const img = imagesRef.current[frameIndex];
+      if (!img || !img.complete) return;
+
+      const canvasWidth = window.innerWidth;
+      const canvasHeight = window.innerHeight;
+
+      if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+      }
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'medium';
+
+      const imgWidth = img.naturalWidth || 1280;
+      const imgHeight = img.naturalHeight || 720;
+      const imgRatio = imgWidth / imgHeight;
+      const canvasRatio = canvasWidth / canvasHeight;
+
+      let drawWidth, drawHeight, drawX, drawY;
+
+      if (imgRatio > canvasRatio) {
+        drawHeight = canvasHeight;
+        drawWidth = canvasHeight * imgRatio;
+        drawX = (canvasWidth - drawWidth) / 2;
+        drawY = 0;
+      } else {
+        drawWidth = canvasWidth;
+        drawHeight = canvasWidth / imgRatio;
+        drawX = 0;
+        drawY = (canvasHeight - drawHeight) / 2;
+      }
+
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      ctx.drawImage(img, Math.floor(drawX), Math.floor(drawY), Math.floor(drawWidth), Math.floor(drawHeight));
+      ctx.restore();
+
+      if (activeImgRef.current) {
+        activeImgRef.current.src = img.src;
+      }
+    };
+
+    const resizeCanvas = () => {
+      drawFrame(Math.round(frameTrackerRef.current.current));
+    };
+
+    window.addEventListener('resize', resizeCanvas);
 
     return () => {
+      isMounted = false;
       window.removeEventListener('openBookVisitModal', handleOpenVisit);
+      window.removeEventListener('resize', resizeCanvas);
       gsap.ticker.remove(gsapTickerFunc);
       lenis.destroy();
-      st.kill();
       ScrollTrigger.getAll().forEach((t) => t.kill());
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
@@ -212,59 +378,126 @@ export default function Home() {
         style={{ width: `${scrollProgress * 100}%` }} 
       />
 
-      {/* 1. HERO SECTION - Static Clean Premium Dark Layout */}
-      <div className="relative w-full min-h-[90vh] flex flex-col justify-center items-center overflow-hidden bg-[#0b0c10] py-20 px-4">
-        
-        {/* Ambient spotlight glow */}
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+      {/* Preloading Screen */}
+      {!isPreloaded && (
+        <div className="fixed inset-0 bg-[#0b0c10] flex flex-col justify-center items-center z-50 gap-6">
+          <div className="relative flex items-center justify-center">
+            <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+            <Building className="h-6 w-6 text-primary absolute animate-pulse" />
+          </div>
+          <div className="text-center space-y-2">
+            <h2 className="font-serif-luxury text-xl tracking-widest text-white uppercase">CRAFTING LUXURY EXPERIENCE</h2>
+            <p className="text-xs font-bold tracking-[0.25em] text-primary">
+              PRELOADING ARCHITECTURAL ASSETS... {preloadProgress}%
+            </p>
+          </div>
+        </div>
+      )}
 
-        <div className="max-w-4xl w-full text-center space-y-8 relative z-20 pt-16">
-          <div className="inline-flex items-center space-x-2.5 glass-premium px-4 py-2 rounded-full border border-primary/50 text-3xs font-extrabold uppercase tracking-[0.25em] text-primary bg-black/60 backdrop-blur-md">
-            <span className="h-2 w-2 rounded-full bg-primary animate-ping" />
-            <span>BUILDING INDIA'S LANDMARKS</span>
+      {/* 1. HERO TRACK - Pinned lock full screen until frame sequence finishes */}
+      <div ref={trackRef} className="relative w-full bg-black">
+        <div ref={pinnedWrapperRef} className="h-screen w-full relative overflow-hidden flex items-center justify-center">
+          
+          {/* Direct Hardware Accelerated Sharp Image Layer */}
+          <img
+            ref={activeImgRef}
+            src={getFramePath(1)}
+            alt="Hero Cinematic Architecture"
+            className="absolute inset-0 w-full h-full object-cover block"
+            style={{
+              imageRendering: '-webkit-optimize-contrast',
+              filter: 'contrast(1.08) saturate(1.05) brightness(1.02)',
+              willChange: 'transform',
+              transform: 'translate3d(0, 0, 0)'
+            }}
+          />
+
+          <canvas 
+            ref={canvasRef} 
+            className="absolute inset-0 w-full h-full block object-cover opacity-0 pointer-events-none" 
+            style={{ imageRendering: '-webkit-optimize-contrast' }}
+          />
+
+          {/* High Contrast Clean Gradient Overlay for Crystal Clear Visibility */}
+          <div 
+            className="absolute inset-0 pointer-events-none" 
+            style={{
+              background: 'linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.25) 100%)',
+            }} 
+          />
+
+          {/* TOP RIGHT: Scroll Hint */}
+          <div 
+            className={`fixed top-24 right-8 z-40 pointer-events-none transition-all duration-700 ${
+              hasScrolled ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+            }`}
+          >
+            <div className="glass-premium px-4 py-2 rounded-full border border-primary/30 flex items-center space-x-2.5 shadow-2xl bg-black/60 backdrop-blur-xl">
+              <span className="text-3xs font-extrabold uppercase tracking-[0.2em] text-white">
+                Scroll to Navigate
+              </span>
+              <MousePointer className="h-3.5 w-3.5 text-primary animate-bounce" />
+            </div>
           </div>
 
-          <h1 className="font-serif-luxury text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-tight">
-            Build the Future. <br />
-            <span className="gold-gradient-text">Live the Extraordinary.</span>
-          </h1>
+          {/* HERO CONTENT OVERLAYS */}
+          <div className="absolute inset-0 flex flex-col justify-between p-6 sm:p-16 z-20 pointer-events-none">
+            
+            {/* DAMAC/Sobha Style Luxury Headline */}
+            <div className="pt-28 max-w-2xl space-y-6">
+              
+              {/* Badge */}
+              <div className="inline-flex items-center space-x-2.5 glass-premium px-4 py-2 rounded-full border border-primary/50 text-3xs font-extrabold uppercase tracking-[0.25em] text-primary shadow-2xl bg-black/60 backdrop-blur-md">
+                <span className="h-2 w-2 rounded-full bg-primary animate-ping" />
+                <span className="drop-shadow">BUILDING INDIA'S LANDMARKS</span>
+              </div>
 
-          <p className="text-xs sm:text-sm text-white/70 leading-relaxed font-medium max-w-xl mx-auto">
-            Discover luxury villas, premium apartments, and iconic commercial developments crafted for modern lifestyles across India's most prestigious locations.
-          </p>
+              {/* Headline */}
+              <h1 className="font-serif-luxury text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.08] drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)]">
+                Build the Future. <br />
+                <span className="gold-gradient-text drop-shadow-[0_4px_20px_rgba(212,175,55,0.3)]">Live the Extraordinary.</span>
+              </h1>
 
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-            <Link
-              to="/properties"
-              className="btn-gold-luxury px-8 py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 shadow-2xl"
-            >
-              <span>Explore Projects</span>
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
+              {/* Subtitle */}
+              <p className="text-xs sm:text-sm text-white/95 leading-relaxed font-semibold max-w-xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
+                Discover luxury villas, premium apartments, and iconic commercial developments crafted for modern lifestyles across India's most prestigious locations.
+              </p>
 
-            <button
-              onClick={() => setShowVisitModal(true)}
-              className="btn-outline-glass px-7 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/30 text-white hover:border-primary hover:text-primary"
-            >
-              <Calendar className="h-4 w-4 text-primary" />
-              <span>Book Site Visit</span>
-            </button>
+              {/* Primary Buttons */}
+              <div className="flex flex-wrap items-center gap-4 pt-4 pointer-events-auto">
+                <Link
+                  to="/properties"
+                  className="btn-gold-luxury px-8 py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 shadow-2xl"
+                >
+                  <span>Explore Projects</span>
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+
+                <button
+                  onClick={() => setShowVisitModal(true)}
+                  className="btn-outline-glass px-7 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/30 text-white hover:border-primary hover:text-primary"
+                >
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <span>Book Site Visit</span>
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Floating Search Panel centered */}
-          <div className="w-full pt-8">
+          {/* BOTTOM FLOATING SEARCH PANEL */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 w-[94%] max-w-4xl pointer-events-auto">
             <form
               onSubmit={handleSearchSubmit}
-              className="bg-[#0e1017]/95 p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 border border-primary/40 backdrop-blur-2xl"
+              className="bg-[#0e1017]/95 p-3.5 sm:p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 border border-primary/40 backdrop-blur-2xl transition-transform duration-300"
+              style={{ transform: `scale(${Math.min(1.03, 1 + scrollProgress * 0.02)})` }}
             >
               {/* City */}
-              <div className="space-y-1 text-left">
+              <div className="space-y-1">
                 <label className="text-[10px] uppercase font-extrabold tracking-wider text-primary px-1">City</label>
                 <select
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold"
+                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold shadow-inner"
                 >
                   <option value="">All Metropolises</option>
                   <option value="Hyderabad">Hyderabad</option>
@@ -272,17 +505,16 @@ export default function Home() {
                   <option value="Mumbai">Mumbai</option>
                   <option value="Pune">Pune</option>
                   <option value="Chennai">Chennai</option>
-                  <option value="Delhi NCR">Delhi NCR</option>
                 </select>
               </div>
 
               {/* Property Type */}
-              <div className="space-y-1 text-left">
+              <div className="space-y-1">
                 <label className="text-[10px] uppercase font-extrabold tracking-wider text-primary px-1">Property Type</label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold"
+                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold shadow-inner"
                 >
                   <option value="">All Categories</option>
                   <option value="Sky Villa">Sky Villa</option>
@@ -293,12 +525,12 @@ export default function Home() {
               </div>
 
               {/* Budget */}
-              <div className="space-y-1 text-left">
+              <div className="space-y-1">
                 <label className="text-[10px] uppercase font-extrabold tracking-wider text-primary px-1">Budget</label>
                 <select
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
-                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold"
+                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold shadow-inner"
                 >
                   <option value="">Any Range</option>
                   <option value="1-3">₹1 Cr – ₹3 Cr</option>
@@ -309,12 +541,12 @@ export default function Home() {
               </div>
 
               {/* Bedrooms */}
-              <div className="space-y-1 text-left">
+              <div className="space-y-1">
                 <label className="text-[10px] uppercase font-extrabold tracking-wider text-primary px-1">Bedrooms</label>
                 <select
                   value={bedrooms}
                   onChange={(e) => setBedrooms(e.target.value)}
-                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold"
+                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold shadow-inner"
                 >
                   <option value="">Any Layout</option>
                   <option value="2">2 BHK</option>
