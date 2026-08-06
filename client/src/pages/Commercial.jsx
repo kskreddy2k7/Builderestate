@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, ArrowUpRight, Building, Compass, Sparkles } from 'lucide-react';
+import OptimizedImage from '../components/OptimizedImage';
 
 const COMMERCIAL_CATEGORIES = [
   {
@@ -71,10 +72,11 @@ export default function Commercial() {
         {COMMERCIAL_CATEGORIES.map((cat, idx) => (
           <div key={idx} className="glass-card-luxury rounded-3xl overflow-hidden border border-white/10 flex flex-col justify-between group">
             <div className="relative h-64 w-full overflow-hidden">
-              <img
+              <OptimizedImage
                 src={cat.image}
                 alt={cat.name}
                 className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700"
+                sizes="(max-width: 1024px) 100vw, 33vw"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#12141a] via-transparent to-black/30" />
               

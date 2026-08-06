@@ -6,6 +6,8 @@ import {
   CreditCard, Compass, Info, DollarSign, Calculator, CheckCircle2
 } from 'lucide-react';
 import api from '../services/api';
+import OptimizedImage from '../components/OptimizedImage';
+import { fetchPublicJson, normalizeProperty } from '../services/publicData';
 
 export default function PropertyDetails() {
   const { id } = useParams();
@@ -36,10 +38,14 @@ export default function PropertyDetails() {
   useEffect(() => {
     const fetchProperty = async () => {
       try {
-        const response = await api.get(`/properties/${id}`);
-        setProperty(response.data);
+        const jsonData = await fetchPublicJson('data/properties.json');
+        const item = (jsonData || []).map(normalizeProperty).find((entry) => String(entry.id) === String(id));
+        if (!item) {
+          setError('Property details not found.');
+        } else {
+          setProperty(item);
+        }
       } catch (err) {
-        console.error(err);
         setError('Property details not found.');
       } finally {
         setLoading(false);
@@ -155,10 +161,12 @@ export default function PropertyDetails() {
         {/* Gallery & Interactive Tabs */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-2xl overflow-hidden border border-border bg-muted relative">
-            <img
+            <OptimizedImage
               src={property.images?.[0]?.url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80'}
               alt={property.title}
               className="w-full h-[400px] object-cover"
+              eager
+              sizes="(max-width: 1024px) 100vw, 66vw"
             />
             <span className="absolute top-4 left-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold uppercase">
               {property.type}

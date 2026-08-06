@@ -54,7 +54,7 @@
     "status": "AVAILABLE",
     "rera": "P02400006611",
     "bedrooms": 5,
-    "bathrooms: ": 6,
+    "bathrooms": 6,
     "area": 5800,
     "image": "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1000&q=80&sig=hyd_4",
     "amenities": ["Terrace Lounge", "Private Helipad", "Concierge Service"]
@@ -290,7 +290,7 @@
     "address": "Wakad",
     "city": "Pune",
     "price": 48000000,
-    "type: ": "Sky Villa",
+    "type": "Sky Villa",
     "status": "AVAILABLE",
     "rera": "P52100007710",
     "bedrooms": 4,

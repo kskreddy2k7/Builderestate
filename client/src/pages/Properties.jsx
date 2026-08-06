@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { Search, MapPin, SlidersHorizontal, Eye, Scale, X, ArrowUpRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import api from '../services/api';
+import OptimizedImage from '../components/OptimizedImage';
+import { fetchPublicJson, normalizeProperty } from '../services/publicData';
 
 const MOCK_PROPERTIES = [
   // Hyderabad
@@ -406,37 +407,35 @@ export default function Properties() {
   const fetchProperties = async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (search) params.search = search;
-      if (city) params.city = city;
-      if (type) params.type = type;
-      if (minPrice) params.minPrice = minPrice;
-      if (maxPrice) params.maxPrice = maxPrice;
-      if (bedrooms) params.bedrooms = bedrooms;
-      params.status = 'AVAILABLE';
+      const jsonData = await fetchPublicJson('data/properties.json');
+      const sourceList = (jsonData || []).map(normalizeProperty);
+      let filtered = sourceList.length ? sourceList : MOCK_PROPERTIES;
 
-      const response = await api.get('/properties', { params });
-      if (response.data && response.data.length > 0) {
-        setProperties(response.data);
-      } else {
-        // Filter MOCK_PROPERTIES locally if API returns empty
-        let filtered = MOCK_PROPERTIES;
-        if (search) {
-          filtered = filtered.filter(p => p.title.toLowerCase().includes(search.toLowerCase()) || p.address.toLowerCase().includes(search.toLowerCase()));
-        }
-        if (city) {
-          filtered = filtered.filter(p => p.city.toLowerCase() === city.toLowerCase());
-        }
-        if (type) {
-          filtered = filtered.filter(p => p.type.toLowerCase().includes(type.toLowerCase()));
-        }
-        if (bedrooms) {
-          filtered = filtered.filter(p => p.bedrooms >= parseInt(bedrooms));
-        }
-        setProperties(filtered);
+      filtered = filtered.filter((item) => item.status === 'AVAILABLE');
+
+      if (search) {
+        const q = search.toLowerCase();
+        filtered = filtered.filter(
+          (p) => p.title.toLowerCase().includes(q) || p.address.toLowerCase().includes(q),
+        );
       }
+      if (city) {
+        filtered = filtered.filter((p) => p.city.toLowerCase() === city.toLowerCase());
+      }
+      if (type) {
+        filtered = filtered.filter((p) => p.type.toLowerCase().includes(type.toLowerCase()));
+      }
+      if (minPrice) {
+        filtered = filtered.filter((p) => Number(p.price) >= Number(minPrice));
+      }
+      if (maxPrice) {
+        filtered = filtered.filter((p) => Number(p.price) <= Number(maxPrice));
+      }
+      if (bedrooms) {
+        filtered = filtered.filter((p) => Number(p.bedrooms) >= Number(bedrooms));
+      }
+      setProperties(filtered);
     } catch (error) {
-      console.error('Error fetching properties', error);
       setProperties(MOCK_PROPERTIES);
     } finally {
       setLoading(false);
@@ -621,10 +620,11 @@ export default function Properties() {
                     <div className={`relative overflow-hidden bg-muted ${
                       viewType === 'GRID' ? 'h-48 w-full' : 'h-48 sm:h-auto sm:w-64 shrink-0'
                     }`}>
-                      <img
-                        src={prop.images?.[0]?.url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80'}
-                        alt=""
+                      <OptimizedImage
+                        src={prop.image || prop.images?.[0]?.url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80'}
+                        alt={prop.title}
                         className="h-full w-full object-cover group-hover:scale-103 transition-transform duration-300"
+                        sizes={viewType === 'GRID' ? '(max-width: 768px) 100vw, 50vw' : '(max-width: 768px) 100vw, 320px'}
                       />
                       <span className="absolute top-3 left-3 bg-primary text-primary-foreground px-2.5 py-0.5 rounded-full text-3xs font-bold uppercase tracking-wider">
                         {prop.type}
@@ -713,10 +713,11 @@ export default function Properties() {
                 </div>
                 <button onClick={() => setQuickViewProp(null)} className="p-1 rounded-lg hover:bg-secondary"><X className="h-5 w-5" /></button>
               </div>
-              <img
-                src={quickViewProp.images?.[0]?.url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80'}
+              <OptimizedImage
+                src={quickViewProp.image || quickViewProp.images?.[0]?.url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80'}
                 className="w-full h-48 object-cover rounded-xl"
-                alt=""
+                alt={quickViewProp.title}
+                sizes="(max-width: 768px) 100vw, 512px"
               />
               <p className="text-xs text-muted-foreground leading-relaxed font-normal">{quickViewProp.description}</p>
               <div className="grid grid-cols-3 gap-2 py-3 border-y border-border text-center text-xs font-semibold">

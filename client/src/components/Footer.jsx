@@ -62,8 +62,8 @@ export default function Footer() {
               <li><Link to="/about" className="hover:text-primary transition-colors">Our Legacy</Link></li>
               <li><a href="#about" className="hover:text-primary transition-colors">Leadership & Vision</a></li>
               <li><a href="#projects" className="hover:text-primary transition-colors">Architectural Design</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Careers & Talent</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Press & Media</a></li>
+              <li><Link to="/contact" className="hover:text-primary transition-colors">Careers & Talent</Link></li>
+              <li><Link to="/about" className="hover:text-primary transition-colors">Press & Media</Link></li>
             </ul>
           </div>
 
@@ -83,11 +83,11 @@ export default function Footer() {
           <div className="space-y-4">
             <h3 className="text-xs font-extrabold uppercase tracking-[0.2em] text-primary font-serif-luxury">Investors</h3>
             <ul className="space-y-2.5 text-xs text-white/70 font-medium">
-              <li><a href="#" className="hover:text-primary transition-colors">Financial Reports</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">RERA Disclosures</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">ESG & Sustainability</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">NRI Investment Desk</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Partner Portal</a></li>
+              <li><Link to="/about" className="hover:text-primary transition-colors">Financial Reports</Link></li>
+              <li><Link to="/about" className="hover:text-primary transition-colors">RERA Disclosures</Link></li>
+              <li><Link to="/about" className="hover:text-primary transition-colors">ESG & Sustainability</Link></li>
+              <li><Link to="/contact" className="hover:text-primary transition-colors">NRI Investment Desk</Link></li>
+              <li><Link to="/login" className="hover:text-primary transition-colors">Partner Portal</Link></li>
             </ul>
           </div>
 
@@ -140,9 +140,9 @@ export default function Footer() {
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-white/50 font-medium gap-4">
           <p>© {new Date().getFullYear()} BuildEstate Luxury Real Estate Limited. All rights reserved.</p>
           <div className="flex space-x-6">
-            <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-primary transition-colors">Cookie Preferences</a>
+            <Link to="/about" className="hover:text-primary transition-colors">Privacy Policy</Link>
+            <Link to="/about" className="hover:text-primary transition-colors">Terms of Service</Link>
+            <Link to="/about" className="hover:text-primary transition-colors">Cookie Preferences</Link>
           </div>
         </div>
       </div>

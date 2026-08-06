@@ -10,11 +10,36 @@ import {
 import Lenis from 'lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import api from '../services/api';
+import OptimizedImage from '../components/OptimizedImage';
+import { fetchPublicJson, getPublicAssetPath, normalizeProperty } from '../services/publicData';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const TOTAL_FRAMES = 240;
+const INITIAL_PRELOAD_FRAMES = 24;
+
+const CITY_IMAGES = {
+  Hyderabad: 'https://images.unsplash.com/photo-1605007493699-af65834f8a00?auto=format&fit=crop&w=800&q=80',
+  Bengaluru: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?auto=format&fit=crop&w=800&q=80',
+  Mumbai: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=800&q=80',
+  Pune: 'https://images.unsplash.com/photo-1601961405399-801fb1f34581?auto=format&fit=crop&w=800&q=80',
+  Chennai: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=800&q=80',
+  'Delhi NCR': 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=800&q=80',
+};
+
+const AMENITY_ICONS = {
+  Recreation: Waves,
+  Luxury: Sparkles,
+  Wellness: Trees,
+  Elite: Award,
+};
+
+const AMENITY_DESCRIPTIONS = {
+  'Infinity Pool': 'Temperature-controlled rooftop pool overlooking skyline views.',
+  'Rooftop Sky Lounge': 'Elevated executive lounge with private concierge service.',
+  'Zen Landscaped Garden': 'Curated green pathways and tranquil biophilic spaces.',
+  'Helipad Access': 'Dedicated rooftop helipad access for premium residents.',
+};
 
 const STAGES = [
   { percent: 0, title: 'Build Tomorrow.', desc: 'Building India\'s Future with luxury Obsidian & Gold PropTech.' },
@@ -99,6 +124,10 @@ const MOCK_FEATURED = [
 export default function Home() {
   const navigate = useNavigate();
   const [properties, setProperties] = useState([]);
+  const [citiesData, setCitiesData] = useState([]);
+  const [projectsData, setProjectsData] = useState([]);
+  const [buildersData, setBuildersData] = useState([]);
+  const [amenitiesData, setAmenitiesData] = useState([]);
   const [search, setSearch] = useState('');
   const [city, setCity] = useState('');
   const [type, setType] = useState('');
@@ -129,11 +158,13 @@ export default function Home() {
   const frameTrackerRef = useRef({ current: 1, target: 1 });
   const lastDrawnFrameRef = useRef(0);
 
-  function getFramePath(index) {
+  function getFramePath(index, extension = 'jpg') {
     const paddedIndex = String(index).padStart(4, '0');
-    const base = import.meta.env.BASE_URL || '/';
-    const cleanBase = base.endsWith('/') ? base : base + '/';
-    return `${cleanBase}videos/WITH-OUT-ANY-TEXT-I-WANT-A-PRI/${paddedIndex}.jpg`;
+    return getPublicAssetPath(`videos/WITH-OUT-ANY-TEXT-I-WANT-A-PRI/${paddedIndex}.${extension}`);
+  }
+
+  function getFrameSources(index) {
+    return [getFramePath(index, 'avif'), getFramePath(index, 'webp'), getFramePath(index, 'jpg')];
   }
 
   useEffect(() => {
@@ -141,20 +172,34 @@ export default function Home() {
     const handleOpenVisit = () => setShowVisitModal(true);
     window.addEventListener('openBookVisitModal', handleOpenVisit);
 
-    // 2. Fetch properties
-    const fetchFeatured = async () => {
+    // 2. Fetch static public data for GitHub Pages-compatible rendering
+    const fetchPublicData = async () => {
       try {
-        const response = await api.get('/properties?status=AVAILABLE');
-        if (response.data && response.data.length > 0) {
-          setProperties(response.data);
-        } else {
-          setProperties(MOCK_FEATURED);
+        const [propertiesJson, citiesJson, projectsJson, buildersJson, amenitiesJson] = await Promise.all([
+          fetchPublicJson('data/properties.json'),
+          fetchPublicJson('data/cities.json'),
+          fetchPublicJson('data/projects.json'),
+          fetchPublicJson('data/builders.json'),
+          fetchPublicJson('data/amenities.json'),
+        ]);
+
+        const normalizedProperties = (propertiesJson || []).map(normalizeProperty);
+        const availableProperties = normalizedProperties.filter((item) => item.status === 'AVAILABLE');
+
+        if (isMounted) {
+          setProperties(availableProperties.length ? availableProperties : MOCK_FEATURED);
+          setCitiesData(citiesJson || []);
+          setProjectsData(projectsJson || []);
+          setBuildersData(buildersJson || []);
+          setAmenitiesData(amenitiesJson || []);
         }
       } catch (err) {
-        setProperties(MOCK_FEATURED);
+        if (isMounted) {
+          setProperties(MOCK_FEATURED);
+        }
       }
     };
-    fetchFeatured();
+    fetchPublicData();
 
     // 3. Initialize Lenis Smooth Scroll
     const lenis = new Lenis({
@@ -180,25 +225,47 @@ export default function Home() {
     const loadImage = (index) => {
       return new Promise((resolve) => {
         if (imagesRef.current[index]) return resolve();
-        
-        const img = new Image();
-        img.src = getFramePath(index);
-        
-        const onComplete = () => {
-          imagesRef.current[index] = img;
-          loadedCount++;
-          if (isMounted) {
-            setPreloadProgress(Math.round((loadedCount / TOTAL_FRAMES) * 100));
+
+        const sources = getFrameSources(index);
+        let sourceIndex = 0;
+
+        const tryLoadSource = () => {
+          const src = sources[sourceIndex];
+          if (!src) {
+            loadedCount++;
+            if (isMounted) setPreloadProgress(Math.round((loadedCount / TOTAL_FRAMES) * 100));
+            resolve();
+            return;
           }
-          resolve();
+
+          const img = new Image();
+          img.src = src;
+
+          const complete = () => {
+            imagesRef.current[index] = img;
+            loadedCount++;
+            if (isMounted) {
+              setPreloadProgress(Math.round((loadedCount / TOTAL_FRAMES) * 100));
+            }
+            resolve();
+          };
+
+          const fallback = () => {
+            sourceIndex += 1;
+            tryLoadSource();
+          };
+
+          img.onload = () => {
+            if (img.decode) {
+              img.decode().then(complete).catch(complete);
+            } else {
+              complete();
+            }
+          };
+          img.onerror = fallback;
         };
 
-        if (img.decode) {
-          img.decode().then(onComplete).catch(onComplete);
-        } else {
-          img.onload = onComplete;
-          img.onerror = onComplete;
-        }
+        tryLoadSource();
       });
     };
 
@@ -262,9 +329,16 @@ export default function Home() {
         tick();
       }
 
-      // 3. Preload remaining frames in background asynchronously
-      const batchSize = 30;
-      for (let i = 2; i <= TOTAL_FRAMES; i += batchSize) {
+      // 3. Preload initial sequence window for smooth start
+      const preloadWindow = [];
+      for (let i = 2; i <= INITIAL_PRELOAD_FRAMES; i++) {
+        preloadWindow.push(loadImage(i));
+      }
+      await Promise.all(preloadWindow);
+
+      // 4. Lazy load remaining frames in background asynchronously
+      const batchSize = 12;
+      for (let i = INITIAL_PRELOAD_FRAMES + 1; i <= TOTAL_FRAMES; i += batchSize) {
         if (!isMounted) return;
         const promises = [];
         const end = Math.min(i + batchSize - 1, TOTAL_FRAMES);
@@ -272,7 +346,15 @@ export default function Home() {
           promises.push(loadImage(j));
         }
         await Promise.all(promises);
+        await new Promise((resume) => {
+          if (window.requestIdleCallback) {
+            window.requestIdleCallback(() => resume(), { timeout: 180 });
+          } else {
+            setTimeout(resume, 40);
+          }
+        });
       }
+
       clearTimeout(safetyTimer);
     };
 
@@ -284,7 +366,21 @@ export default function Home() {
       if (!canvas) return;
       
       const ctx = canvas.getContext('2d', { alpha: false });
-      const img = imagesRef.current[frameIndex];
+      let img = imagesRef.current[frameIndex];
+      if (!img || !img.complete) {
+        for (let offset = 1; offset < 8; offset += 1) {
+          const before = imagesRef.current[frameIndex - offset];
+          const after = imagesRef.current[frameIndex + offset];
+          if (before?.complete) {
+            img = before;
+            break;
+          }
+          if (after?.complete) {
+            img = after;
+            break;
+          }
+        }
+      }
       if (!img || !img.complete) return;
 
       const canvasWidth = window.innerWidth;
@@ -297,7 +393,7 @@ export default function Home() {
 
       ctx.save();
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'medium';
+      ctx.imageSmoothingQuality = 'high';
 
       const imgWidth = img.naturalWidth || 1280;
       const imgHeight = img.naturalHeight || 720;
@@ -368,6 +464,28 @@ export default function Home() {
     if (selectedSegment === 'ALL') return list.slice(0, 3);
     if (selectedSegment === 'READY') return list.filter(p => p.status === 'Ready to Move' || p.price > 35000000).slice(0, 3);
     return list.filter(p => p.status === 'Under Construction' || p.price <= 35000000).slice(0, 3);
+  };
+
+  const getCityShowcase = () => {
+    if (!citiesData.length) return INDIAN_CITIES;
+    return citiesData.map((cityItem) => {
+      const cityProjects = projectsData.filter((project) => project.city === cityItem.name);
+      return {
+        name: cityItem.name,
+        locCount: cityItem.localities?.length || 0,
+        projects: cityProjects.slice(0, 2).map((item) => item.name).join(', ') || 'Premium Launches',
+        image: CITY_IMAGES[cityItem.name] || CITY_IMAGES.Hyderabad,
+      };
+    });
+  };
+
+  const getAmenitiesShowcase = () => {
+    if (!amenitiesData.length) return AMENITIES;
+    return amenitiesData.map((amenity) => ({
+      name: amenity.name,
+      desc: AMENITY_DESCRIPTIONS[amenity.name] || `${amenity.category} lifestyle feature available across premium listings.`,
+      icon: AMENITY_ICONS[amenity.category] || Sparkles,
+    }));
   };
 
   return (
@@ -500,11 +618,9 @@ export default function Home() {
                   className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold shadow-inner"
                 >
                   <option value="">All Metropolises</option>
-                  <option value="Hyderabad">Hyderabad</option>
-                  <option value="Bengaluru">Bengaluru</option>
-                  <option value="Mumbai">Mumbai</option>
-                  <option value="Pune">Pune</option>
-                  <option value="Chennai">Chennai</option>
+                  {(citiesData.length ? citiesData : INDIAN_CITIES).map((entry) => (
+                    <option key={entry.name} value={entry.name}>{entry.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -613,10 +729,11 @@ export default function Home() {
             >
               {/* Image & Badges */}
               <div className="relative h-64 w-full overflow-hidden">
-                <img
+                <OptimizedImage
                   src={prop.image || prop.images?.[0]?.url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1000&q=80'}
                   alt={prop.title}
                   className="h-full w-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out"
+                  sizes="(max-width: 1024px) 100vw, 33vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#12141a] via-transparent to-black/30" />
                 
@@ -734,10 +851,11 @@ export default function Home() {
           </div>
 
           <div className="relative rounded-3xl overflow-hidden border border-white/15 shadow-2xl group">
-            <img
+            <OptimizedImage
               src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80"
               alt="Architectural Legacy"
               className="w-full h-[450px] object-cover group-hover:scale-105 transition-transform duration-700"
+              sizes="(max-width: 1024px) 100vw, 50vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
             
@@ -789,7 +907,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {AMENITIES.map((item, idx) => {
+          {getAmenitiesShowcase().map((item, idx) => {
             const Icon = item.icon;
             return (
               <div key={idx} className="glass-card-luxury p-5 rounded-2xl border border-white/10 space-y-3 group hover:border-primary/50 transition-all">
@@ -815,7 +933,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-            {INDIAN_CITIES.map((c, i) => (
+            {getCityShowcase().map((c, i) => (
               <div
                 key={i}
                 onClick={() => {
@@ -825,7 +943,12 @@ export default function Home() {
                 }}
                 className="group cursor-pointer rounded-2xl overflow-hidden relative h-60 border border-white/15 shadow-xl"
               >
-                <img src={c.image} alt={c.name} className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700" />
+                <OptimizedImage
+                  src={c.image}
+                  alt={c.name}
+                  className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
+                  sizes="(max-width: 1024px) 50vw, 33vw"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                 
                 <div className="absolute bottom-5 left-5 right-5 space-y-1">
@@ -842,12 +965,13 @@ export default function Home() {
         </div>
 
         {/* Animated Statistics Grid */}
-        <div className="glass-premium rounded-3xl p-10 border border-primary/30 grid grid-cols-2 lg:grid-cols-5 gap-8 text-center">
+        <div className="glass-premium rounded-3xl p-10 border border-primary/30 grid grid-cols-2 lg:grid-cols-6 gap-8 text-center">
           {[
-            { num: '50+', label: 'Luxury Developments' },
+            { num: `${projectsData.length || 50}+`, label: 'Luxury Developments' },
             { num: '20+', label: 'Years Legacy' },
             { num: '12,000+', label: 'Happy Families' },
-            { num: '8+', label: 'Target Cities' },
+            { num: `${citiesData.length || 8}+`, label: 'Target Cities' },
+            { num: `${buildersData.length || 6}+`, label: 'Trusted Builders' },
             { num: '6M+', label: 'Sq.ft Delivered' }
           ].map((stat, i) => (
             <div key={i} className="space-y-2">
