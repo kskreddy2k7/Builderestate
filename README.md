@@ -1,190 +1,110 @@
-# BuildEstate — Unified Real Estate & Construction Platform
+# BuildEstate — Real Estate & Construction Management MVP
 
-> One platform for builders, brokers, buyers, contractors, site engineers, and suppliers.
-
-[![CI/CD](https://github.com/buildestate/buildestate/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/buildestate/buildestate/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+BuildEstate is a modern, lightweight, and scalable Real Estate and Construction Management platform. Built on a clean client-server architecture using Vite + React on the frontend, and Node.js + Express + Prisma + PostgreSQL on the backend.
 
 ---
 
-## Overview
-
-BuildEstate is a single, integrated SaaS platform that digitises the complete real estate and construction lifecycle — from property listing through booking, construction tracking, and final handover. It is **not** multiple applications — it is one monorepo, one database, one auth system.
-
-### 10 Modules, 9 Roles, 1 Platform
-
-| Module | Primary Role |
-|---|---|
-| Real Estate Marketplace | Public / Buyer / Broker |
-| Construction Management | Builder / Site Engineer |
-| Builder ERP & Finance | Builder |
-| Broker CRM | Broker / Agent |
-| Contractor Management | Contractor / Builder |
-| Material Marketplace | Supplier / Contractor |
-| Buyer Portal | Buyer |
-| Site Engineer Portal | Site Engineer |
-| Admin Portal | Admin / Super Admin |
-| AI Assistant | All roles |
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 15, TypeScript, TailwindCSS, ShadCN UI, Framer Motion |
-| Backend | NestJS, Fastify, TypeScript |
-| Database | PostgreSQL 16, Prisma ORM |
-| Cache | Redis 7 |
-| Search | Elasticsearch 8 |
-| File Storage | AWS S3 + CloudFront |
-| Queue | Bull (Redis-backed) |
-| Auth | JWT + OAuth (Google), RBAC |
-| Payments | Razorpay |
-| AI | OpenAI GPT-4o |
-| Infrastructure | Docker, Kubernetes (AWS EKS) |
-| Monorepo | Turborepo + pnpm workspaces |
-
----
-
-## Project Structure
+## 🏗️ Folder Structure
 
 ```
-buildestate/
-├── apps/
-│   ├── web/          # Next.js 15 frontend — all dashboards
-│   └── api/          # NestJS backend — all modules
-├── packages/
-│   ├── types/        # Shared TypeScript interfaces
-│   ├── utils/        # Shared utilities (format, date, validation)
-│   ├── ui/           # Shared React component library
-│   └── config/       # Shared ESLint, TS, Tailwind configs
-└── infra/
-    ├── docker/       # Dockerfiles + Compose
-    ├── k8s/          # Kubernetes manifests
-    └── terraform/    # AWS infrastructure as code
+BuildEstate/
+├── client/                 # React + Vite Frontend (Port 3000)
+│   ├── src/
+│   │   ├── components/     # UI elements (Navbar, Footer, Modals)
+│   │   ├── context/        # Auth & Light/Dark Mode state handlers
+│   │   ├── pages/          # Views (Marketplace, Detail Page, Dashboards)
+│   │   ├── services/       # Axios API integration
+│   │   ├── App.jsx         # App router and layout wrapper
+│   │   └── main.jsx        # App entry point
+├── server/                 # Express.js Backend (Port 5000)
+│   ├── config/             # Prisma client setup
+│   ├── controllers/        # API request logic (Auth, Properties, Bookings)
+│   ├── middleware/         # JWT Auth and multer upload helpers
+│   ├── routes/             # REST endpoints (auth, properties, bookings)
+│   ├── prisma/             # Schema configuration and database seed scripts
+│   └── server.js           # API entry point
+└── README.md
 ```
 
 ---
 
-## Prerequisites
+## 🛠️ Technology Stack
 
-- Node.js >= 20
-- pnpm >= 9.6
-- Docker + Docker Compose
-- PostgreSQL 16 (or use Docker)
-- Redis 7 (or use Docker)
+- **Frontend**: React 18, Vite, Tailwind CSS, React Router v6, Axios, React Hook Form, Framer Motion, Lucide Icons
+- **Backend**: Node.js, Express.js, Prisma ORM, JWT, bcryptjs, Multer
+- **Database**: PostgreSQL
 
 ---
 
-## Getting Started
+## 🔑 Demo Login Credentials
 
-### 1. Clone and install
+You can test all user roles using the pre-seeded credentials. All accounts share the same password:
 
-```bash
-git clone https://github.com/buildestate/buildestate.git
-cd buildestate
-pnpm install
-```
+**Password**: `Password@123`
 
-### 2. Start infrastructure services
-
-```bash
-pnpm docker:up
-# Starts: PostgreSQL, Redis, Elasticsearch, MinIO, MailHog
-```
-
-### 3. Configure environment variables
-
-```bash
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-# Edit both files with your local/dev credentials
-```
-
-### 4. Set up the database
-
-```bash
-pnpm db:migrate   # Run all Prisma migrations
-pnpm db:seed      # Seed demo data + user accounts
-```
-
-### 5. Start development servers
-
-```bash
-pnpm dev
-# API:  http://localhost:4000
-# Web:  http://localhost:3000
-# Docs: http://localhost:4000/api/docs
-```
+| Role | Email | Dashboard Features |
+| :--- | :--- | :--- |
+| **Admin** | `admin@buildestate.in` | Global stats, user listing, delete/moderate accounts |
+| **Builder** | `builder@buildestate.in` | List properties, create construction projects, approve bookings |
+| **Buyer** | `buyer@buildestate.in` | Search properties, mock booking checkouts, view payments ledger |
 
 ---
 
-## Demo Accounts
+## 🚀 Local Run Guide
 
-After seeding, the following accounts are available (password: `Password@123`):
-
-| Role | Email |
-|---|---|
-| Super Admin | superadmin@buildestate.in |
-| Admin | admin@buildestate.in |
-| Builder | builder@buildestate.in |
-| Broker | broker@buildestate.in |
-| Buyer | buyer@buildestate.in |
-| Contractor | contractor@buildestate.in |
-| Site Engineer | engineer@buildestate.in |
-| Supplier | supplier@buildestate.in |
+### Prerequisites
+1. **Node.js** (v20+ recommended)
+2. **PostgreSQL** running locally or a Supabase PostgreSQL instance URL.
 
 ---
 
-## Available Scripts
+### Step 1: Backend Setup
+1. Navigate to the server folder:
+   ```bash
+   cd server
+   ```
 
-```bash
-pnpm dev              # Start all apps in development mode
-pnpm build            # Build all apps and packages
-pnpm test             # Run all test suites
-pnpm lint             # Lint all workspaces
-pnpm type-check       # TypeScript check across monorepo
-pnpm db:migrate       # Deploy Prisma migrations
-pnpm db:seed          # Seed demo data
-pnpm db:studio        # Open Prisma Studio
-pnpm docker:up        # Start dev infrastructure
-pnpm docker:down      # Stop dev infrastructure
-pnpm docker:logs      # Tail infrastructure logs
-```
+2. Configure environment variables in `server/.env`:
+   ```env
+   PORT=5000
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/buildestate?schema=public"
+   JWT_SECRET="your_jwt_secret_key"
+   ```
 
----
+3. Sync database schemas using Prisma:
+   ```bash
+   npx prisma db push
+   ```
 
-## API Documentation
+4. Populate initial seed test data:
+   ```bash
+   npm run db:seed
+   ```
 
-Swagger UI is available at `http://localhost:4000/api/docs` in development mode.
-
----
-
-## Implementation Roadmap
-
-| Phase | Scope | Status |
-|---|---|---|
-| 1 | Monorepo + Auth + DB + Frontend shell | ✅ Complete |
-| 2 | Marketplace + Builder ERP + Construction | 🔜 Next |
-| 3 | CRM + Buyer Portal + Payments | Planned |
-| 4 | Contractor + Materials + Site Engineer | Planned |
-| 5 | AI Assistant + Analytics + Production | Planned |
+5. Start the Express development server:
+   ```bash
+   npm run dev
+   ```
+   *The server starts on [http://localhost:5000](http://localhost:5000)*.
 
 ---
 
-## Contributing
+### Step 2: Frontend Setup
+1. Open a new terminal and navigate to the client folder:
+   ```bash
+   cd client
+   ```
 
-This project uses conventional commits. Run `pnpm prepare` to set up git hooks.
-
-```
-feat(crm): add lead scoring algorithm
-fix(auth): handle expired refresh token edge case
-docs(api): update swagger tags for materials module
-```
+2. Start the Vite React development server:
+   ```bash
+   npm run dev
+   ```
+   *The client starts on [http://localhost:3000](http://localhost:3000)*.
 
 ---
 
-## License
+## 📝 Presenting the Project (Tips for Interviews / Presentations)
 
-MIT — see [LICENSE](LICENSE)
+- **Architecture Choice**: Explain why you chose a clean Client-Server model over a complex monorepo or Next.js server components (which are complex for beginners). This highlights your focus on decoupling backend business logic (Express + Prisma) from user interfaces (React + Tailwind).
+- **Prisma integration**: Highlight the ease of schema migration using `npx prisma db push` and object relationships.
+- **Glassmorphism Theme**: Demonstrate the light/dark mode switch which adds premium visual appeal.

@@ -1,0 +1,131 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  BUILDER
+  BUYER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  name      String
+  phone     String
+  role      Role      @default(BUYER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relationships
+  properties Property[] @relation("BuilderProperties")
+  bookings   Booking[]  @relation("BuyerBookings")
+  projects   Project[]  @relation("BuilderProjects")
+
+  @@map("users")
+}
+
+model Property {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  address     String
+  city        String
+  type        String    // HOUSE, APARTMENT, VILLA, LAND
+  bedrooms    Int
+  bathrooms   Int
+  area        Float
+  status      String    @default("AVAILABLE") // AVAILABLE, SOLD, RENTED
+  builderId   String
+  projectId   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relationships
+  builder     User      @relation("BuilderProperties", fields: [builderId], references: [id], onDelete: Cascade)
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  images      PropertyImage[]
+  bookings    Booking[]
+
+  @@map("properties")
+}
+
+model Project {
+  id          String     @id @default(uuid())
+  name        String
+  description String
+  location    String
+  builderId   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relationships
+  builder     User       @relation("BuilderProjects", fields: [builderId], references: [id], onDelete: Cascade)
+  properties  Property[]
+
+  @@map("projects")
+}
+
+model PropertyImage {
+  id         String   @id @default(uuid())
+  url        String
+  propertyId String
+  createdAt  DateTime @default(now())
+
+  // Relationships
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_images")
+}
+
+model Booking {
+  id         String        @id @default(uuid())
+  propertyId String
+  buyerId    String
+  amount     Float
+  status     BookingStatus @default(PENDING)
+  date       DateTime      @default(now())
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  // Relationships
+  property   Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyer      User          @relation("BuyerBookings", fields: [buyerId], references: [id], onDelete: Cascade)
+  payments   Payment[]
+
+  @@map("bookings")
+}
+
+model Payment {
+  id         String        @id @default(uuid())
+  bookingId  String
+  amount     Float
+  status     PaymentStatus @default(PENDING)
+  reference  String?       // Payment gateway reference
+  date       DateTime      @default(now())
+  createdAt  DateTime      @default(now())
+
+  // Relationships
+  booking    Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
