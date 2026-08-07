@@ -1,0 +1,6 @@
+[
+  { "id": "bld-1", "name": "Prestige Group", "founded": "1986", "headquarters": "Bengaluru" },
+  { "id": "bld-2", "name": "Sobha Realty", "founded": "1995", "headquarters": "Bengaluru" },
+  { "id": "bld-3", "name": "DLF", "founded": "1946", "headquarters": "New Delhi" },
+  { "id": "bld-4", "name": "Lodha", "founded": "1980", "headquarters": "Mumbai" }
+]

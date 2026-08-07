@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BuildEstate — Indian Luxury Image Sequence</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Loading Indicator -->
+  <div id="loader" class="loader-overlay">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">PRELOADING CINEMATIC METROPOLIS... <span id="load-progress">0%</span></div>
+  </div>
+
+  <!-- Main Scroll Track (1000vh) -->
+  <div id="scroll-track">
+    <div class="sticky-container">
+      <canvas id="sequence-canvas"></canvas>
+
+      <!-- Ambient Dark Vignette Overlay -->
+      <div class="vignette"></div>
+
+      <!-- Narrative Overlay Text Blocks -->
+      <div id="text-overlays">
+        <div class="text-block" data-start="0" data-end="20">
+          <div class="logo-container">
+            <svg class="gold-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 21h18M9 21V9a2 2 0 012-2h2a2 2 0 012 2v12M5 21V5a2 2 0 012-2h2a2 2 0 012 2v16M15 21V11a2 2 0 012-2h2a2 2 0 012 2v10" />
+            </svg>
+            <h2>BuildEstate</h2>
+          </div>
+          <h1>Build Tomorrow.</h1>
+        </div>
+
+        <div class="text-block" data-start="20" data-end="40">
+          <h1>Designed for Modern India.</h1>
+          <p>Fusing luxury design with premium structural engineering.</p>
+        </div>
+
+        <div class="text-block" data-start="40" data-end="60">
+          <h1>Luxury Living.</h1>
+          <p>Crafted with precision, inspired by India's high-end architecture.</p>
+        </div>
+
+        <div class="text-block" data-start="60" data-end="80">
+          <h1>Where Dreams Become Addresses.</h1>
+          <p>Premium sky villas and weekend farms in target cities.</p>
+        </div>
+
+        <div class="text-block" data-start="80" data-end="100">
+          <h1>Experience Smart Living.</h1>
+          <div class="cta-buttons">
+            <a href="/properties" class="btn btn-gold">Explore Marketplace</a>
+            <a href="/register" class="btn btn-outline">Join As Builder</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Next Sections Content -->
+  <main class="content-sections">
+    <section class="section-card">
+      <div class="badge">Featured Properties</div>
+      <h2>Flagship Indian Townships</h2>
+      <p>Highly vetted residential units in Kokapet, Gachibowli, and Whitefield.</p>
+      <div class="mock-grid">
+        <div class="mock-card">
+          <div class="img-placeholder" style="background-image: url('https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=400&q=80');"></div>
+          <h3>Prestige Kokapet Lakefront</h3>
+          <p>₹4.5 Cr onwards • Hyderabad</p>
+        </div>
+        <div class="mock-card">
+          <div class="img-placeholder" style="background-image: url('https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80');"></div>
+          <h3>Sobha Royal Meadows</h3>
+          <p>₹2.8 Cr onwards • Bengaluru</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <div class="badge">Builder Registry</div>
+      <h2>Prestige Partner Showcase</h2>
+      <p>Working alongside DLF, Lodha, Sobha, and Godrej Properties to digitize bookings.</p>
+    </section>
+
+    <footer class="footer-simple">
+      <p>© 2026 BuildEstate. Developed with Vanilla JS for high-end rendering.</p>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+[
+  { "id": "city-1", "name": "Hyderabad", "localities": ["Financial District", "Gachibowli", "HITEC City", "Kokapet", "Narsingi", "Kondapur", "Tellapur"] },
+  { "id": "city-2", "name": "Bengaluru", "localities": ["Whitefield", "Sarjapur", "Electronic City", "Hebbal", "Yelahanka", "Devanahalli", "Koramangala"] },
+  { "id": "city-3", "name": "Mumbai", "localities": ["BKC", "Worli", "Powai", "Lower Parel", "Bandra", "Andheri"] },
+  { "id": "city-4", "name": "Chennai", "localities": ["OMR", "ECR", "Velachery", "Sholinganallur", "Porur"] },
+  { "id": "city-5", "name": "Pune", "localities": ["Hinjewadi", "Baner", "Kharadi", "Wakad"] },
+  { "id": "city-6", "name": "Delhi NCR", "localities": ["Gurgaon", "Noida", "Dwarka Expressway", "Greater Noida"] }
+]
