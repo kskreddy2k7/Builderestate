@@ -17,11 +17,15 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import SellProperty from './pages/SellProperty';
 
 // Dashboards
 import BuyerDashboard from './pages/BuyerDashboard';
 import BuilderDashboard from './pages/BuilderDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import Dashboard from './pages/Dashboard';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -74,6 +78,19 @@ export default function App() {
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/sell" element={<SellProperty />} />
+
+              {/* Protected Unified Dashboard */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['BUYER', 'BUILDER', 'ADMIN']}>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Protected Buyer Dashboard */}
               <Route

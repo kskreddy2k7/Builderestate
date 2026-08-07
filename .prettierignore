@@ -1,9 +1,0 @@
-node_modules
-.next
-dist
-build
-coverage
-.turbo
-*.generated.ts
-prisma/migrations
-pnpm-lock.yaml

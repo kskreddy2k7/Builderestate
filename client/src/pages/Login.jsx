@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, Key, Mail, AlertCircle, Building } from 'lucide-react';
+import { LogIn, Key, Mail, AlertCircle, Building, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Login() {
@@ -10,6 +10,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -22,13 +23,7 @@ export default function Login() {
     setLoading(true);
     try {
       const user = await login(data.email, data.password);
-      if (user.role === 'ADMIN') {
-        navigate('/admin');
-      } else if (user.role === 'BUILDER') {
-        navigate('/builder');
-      } else {
-        navigate('/buyer');
-      }
+      navigate('/dashboard');
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || 'Invalid credentials.');
@@ -73,7 +68,7 @@ export default function Login() {
                 type="email"
                 placeholder="e.g. buyer@buildestate.in"
                 {...register('email', { required: 'Email is required' })}
-                className="w-full bg-background/50 border border-border rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder:text-muted-foreground/60 text-xs"
+                className="w-full bg-[#161924] border border-white/15 rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder:text-muted-foreground/60 text-xs"
               />
               {errors.email && <p className="text-destructive text-2xs font-medium">{errors.email.message}</p>}
             </div>
@@ -82,12 +77,21 @@ export default function Login() {
               <label className="text-muted-foreground uppercase flex items-center gap-1 text-2xs font-extrabold">
                 <Key className="h-3.5 w-3.5 text-primary" /> Password
               </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                {...register('password', { required: 'Password is required' })}
-                className="w-full bg-background/50 border border-border rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white text-xs"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  {...register('password', { required: 'Password is required' })}
+                  className="w-full bg-[#161924] border border-white/15 rounded-xl py-3 pl-3.5 pr-10 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                </button>
+              </div>
               {errors.password && <p className="text-destructive text-2xs font-medium">{errors.password.message}</p>}
             </div>
 

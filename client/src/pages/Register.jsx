@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus, User, Mail, Phone, Key, Briefcase, AlertCircle, Building } from 'lucide-react';
+import { UserPlus, User, Mail, Phone, Key, Briefcase, AlertCircle, Building, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Register() {
@@ -10,6 +10,7 @@ export default function Register() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -22,13 +23,7 @@ export default function Register() {
     setLoading(true);
     try {
       const user = await signup(data.name, data.email, data.phone, data.password, data.role);
-      if (user.role === 'ADMIN') {
-        navigate('/admin');
-      } else if (user.role === 'BUILDER') {
-        navigate('/builder');
-      } else {
-        navigate('/buyer');
-      }
+      navigate('/dashboard');
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || 'Error occurred during registration.');
@@ -74,7 +69,7 @@ export default function Register() {
                 type="text"
                 placeholder="John Doe"
                 {...register('name', { required: 'Name is required' })}
-                className="w-full bg-background/50 border border-border rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder:text-muted-foreground/60 text-xs"
+                className="w-full bg-[#161924] border border-white/15 rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder:text-muted-foreground/60 text-xs"
               />
               {errors.name && <p className="text-destructive text-2xs font-medium">{errors.name.message}</p>}
             </div>
@@ -88,7 +83,7 @@ export default function Register() {
                 type="email"
                 placeholder="john@example.com"
                 {...register('email', { required: 'Email is required' })}
-                className="w-full bg-background/50 border border-border rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder:text-muted-foreground/60 text-xs"
+                className="w-full bg-[#161924] border border-white/15 rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder:text-muted-foreground/60 text-xs"
               />
               {errors.email && <p className="text-destructive text-2xs font-medium">{errors.email.message}</p>}
             </div>
@@ -102,7 +97,7 @@ export default function Register() {
                 type="text"
                 placeholder="+91 98765 43210"
                 {...register('phone', { required: 'Phone is required' })}
-                className="w-full bg-background/50 border border-border rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder:text-muted-foreground/60 text-xs"
+                className="w-full bg-[#161924] border border-white/15 rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder:text-muted-foreground/60 text-xs"
               />
               {errors.phone && <p className="text-destructive text-2xs font-medium">{errors.phone.message}</p>}
             </div>
@@ -112,15 +107,24 @@ export default function Register() {
               <label className="text-muted-foreground uppercase flex items-center gap-1 text-2xs font-extrabold">
                 <Key className="h-3.5 w-3.5 text-primary" /> Password
               </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                {...register('password', {
-                  required: 'Password is required',
-                  minLength: { value: 6, message: 'Password must be at least 6 characters' },
-                })}
-                className="w-full bg-background/50 border border-border rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white text-xs"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  {...register('password', {
+                    required: 'Password is required',
+                    minLength: { value: 6, message: 'Password must be at least 6 characters' },
+                  })}
+                  className="w-full bg-[#161924] border border-white/15 rounded-xl py-3 pl-3.5 pr-10 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                </button>
+              </div>
               {errors.password && <p className="text-destructive text-2xs font-medium">{errors.password.message}</p>}
             </div>
 
@@ -131,10 +135,11 @@ export default function Register() {
               </label>
               <select
                 {...register('role', { required: 'Please select a role' })}
-                className="w-full bg-background/50 border border-border rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white text-xs select-custom"
+                className="w-full bg-[#161924] border border-white/15 rounded-xl py-3 px-3.5 focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white text-xs select-custom"
               >
-                <option value="BUYER">Buyer (Search and Book Homes)</option>
-                <option value="BUILDER">Builder (Develop & List Properties)</option>
+                <option value="BUYER" className="bg-[#12141d] text-white">Buyer (Search and Book Homes)</option>
+                <option value="SELLER" className="bg-[#12141d] text-white">Individual Seller (List your property)</option>
+                <option value="BUILDER" className="bg-[#12141d] text-white">Builder/Developer (Corporate projects)</option>
               </select>
               {errors.role && <p className="text-destructive text-2xs font-medium">{errors.role.message}</p>}
             </div>

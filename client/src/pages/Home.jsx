@@ -99,11 +99,6 @@ const MOCK_FEATURED = [
 export default function Home() {
   const navigate = useNavigate();
   const [properties, setProperties] = useState([]);
-  const [search, setSearch] = useState('');
-  const [city, setCity] = useState('');
-  const [type, setType] = useState('');
-  const [budget, setBudget] = useState('');
-  const [bedrooms, setBedrooms] = useState('');
   const [selectedSegment, setSelectedSegment] = useState('ALL');
   const [activeFaq, setActiveFaq] = useState(null);
 
@@ -118,7 +113,6 @@ export default function Home() {
   const trackRef = useRef(null);
   const pinnedWrapperRef = useRef(null);
   const canvasRef = useRef(null);
-  const activeImgRef = useRef(null);
 
   const [preloadProgress, setPreloadProgress] = useState(0);
   const [isPreloaded, setIsPreloaded] = useState(false);
@@ -321,10 +315,6 @@ export default function Home() {
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
       ctx.drawImage(img, Math.floor(drawX), Math.floor(drawY), Math.floor(drawWidth), Math.floor(drawHeight));
       ctx.restore();
-
-      if (activeImgRef.current) {
-        activeImgRef.current.src = img.src;
-      }
     };
 
     const resizeCanvas = () => {
@@ -344,15 +334,6 @@ export default function Home() {
     };
   }, []);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    const params = new URLSearchParams();
-    if (search) params.append('search', search);
-    if (city) params.append('city', city);
-    if (type) params.append('type', type);
-    navigate(`/properties?${params.toString()}`);
-  };
-
   const handleVisitSubmit = (e) => {
     e.preventDefault();
     setVisitSubmitted(true);
@@ -369,6 +350,17 @@ export default function Home() {
     if (selectedSegment === 'READY') return list.filter(p => p.status === 'Ready to Move' || p.price > 35000000).slice(0, 3);
     return list.filter(p => p.status === 'Under Construction' || p.price <= 35000000).slice(0, 3);
   };
+
+  // Calculate dynamic opacity and translateY for the text overlays (fade out in middle, show at start and end)
+  let overlayOpacity = 0;
+  let overlayTranslateY = 0;
+  if (scrollProgress < 0.2) {
+    overlayOpacity = (0.2 - scrollProgress) / 0.2;
+    overlayTranslateY = -(scrollProgress / 0.2) * 30; // slide up 30px
+  } else if (scrollProgress > 0.8) {
+    overlayOpacity = (scrollProgress - 0.8) / 0.2;
+    overlayTranslateY = (1 - (scrollProgress - 0.8) / 0.2) * 30; // slide up from 30px to 0px
+  }
 
   return (
     <div className="space-y-32 pb-24 aurora-bg bg-[#0b0c10] text-white font-sans">
@@ -398,29 +390,33 @@ export default function Home() {
       <div ref={trackRef} className="relative w-full bg-black">
         <div ref={pinnedWrapperRef} className="h-screen w-full relative overflow-hidden flex items-center justify-center">
           
-          {/* Direct Hardware Accelerated Sharp Image Layer */}
-          <img
-            ref={activeImgRef}
-            src={getFramePath(1)}
-            alt="Hero Cinematic Architecture"
-            className="absolute inset-0 w-full h-full object-cover block"
-            style={{
-              imageRendering: '-webkit-optimize-contrast',
-              filter: 'contrast(1.08) saturate(1.05) brightness(1.02)',
-              willChange: 'transform',
-              transform: 'translate3d(0, 0, 0)'
-            }}
-          />
+          {/* Direct Hardware Accelerated Sharp Image Layer (Fallback / Loading Background) */}
+          {!isPreloaded && (
+            <img
+              src={getFramePath(1)}
+              alt="Hero Cinematic Architecture Loading"
+              className="absolute inset-0 w-full h-full object-cover block z-0"
+              style={{
+                imageRendering: '-webkit-optimize-contrast',
+                filter: 'contrast(1.08) saturate(1.05) brightness(1.02)'
+              }}
+            />
+          )}
 
+          {/* High Performance Visible Canvas Rendering Layer */}
           <canvas 
             ref={canvasRef} 
-            className="absolute inset-0 w-full h-full block object-cover opacity-0 pointer-events-none" 
-            style={{ imageRendering: '-webkit-optimize-contrast' }}
+            className="absolute inset-0 w-full h-full block object-cover z-10" 
+            style={{ 
+              imageRendering: '-webkit-optimize-contrast',
+              opacity: isPreloaded ? 1 : 0,
+              transition: 'opacity 0.5s ease-in-out'
+            }}
           />
 
           {/* High Contrast Clean Gradient Overlay for Crystal Clear Visibility */}
           <div 
-            className="absolute inset-0 pointer-events-none" 
+            className="absolute inset-0 pointer-events-none z-15" 
             style={{
               background: 'linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.25) 100%)',
             }} 
@@ -440,8 +436,16 @@ export default function Home() {
             </div>
           </div>
 
-          {/* HERO CONTENT OVERLAYS */}
-          <div className="absolute inset-0 flex flex-col justify-between p-6 sm:p-16 z-20 pointer-events-none">
+          {/* HERO CONTENT OVERLAYS - Dynamic Fade and Translate */}
+          <div 
+            className="absolute inset-0 flex flex-col justify-between p-6 sm:p-16 z-20 pointer-events-none"
+            style={{
+              opacity: overlayOpacity,
+              transform: `translate3d(0, ${overlayTranslateY}px, 0)`,
+              pointerEvents: (scrollProgress > 0.22 && scrollProgress < 0.78) ? 'none' : 'auto',
+              transition: 'opacity 0.1s ease-out, transform 0.1s ease-out'
+            }}
+          >
             
             {/* DAMAC/Sobha Style Luxury Headline */}
             <div className="pt-28 max-w-2xl space-y-6">
@@ -482,91 +486,6 @@ export default function Home() {
                 </button>
               </div>
             </div>
-          </div>
-
-          {/* BOTTOM FLOATING SEARCH PANEL */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 w-[94%] max-w-4xl pointer-events-auto">
-            <form
-              onSubmit={handleSearchSubmit}
-              className="bg-[#0e1017]/95 p-3.5 sm:p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 border border-primary/40 backdrop-blur-2xl transition-transform duration-300"
-              style={{ transform: `scale(${Math.min(1.03, 1 + scrollProgress * 0.02)})` }}
-            >
-              {/* City */}
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-extrabold tracking-wider text-primary px-1">City</label>
-                <select
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold shadow-inner"
-                >
-                  <option value="">All Metropolises</option>
-                  <option value="Hyderabad">Hyderabad</option>
-                  <option value="Bengaluru">Bengaluru</option>
-                  <option value="Mumbai">Mumbai</option>
-                  <option value="Pune">Pune</option>
-                  <option value="Chennai">Chennai</option>
-                </select>
-              </div>
-
-              {/* Property Type */}
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-extrabold tracking-wider text-primary px-1">Property Type</label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold shadow-inner"
-                >
-                  <option value="">All Categories</option>
-                  <option value="Sky Villa">Sky Villa</option>
-                  <option value="Penthouse">Penthouse</option>
-                  <option value="Commercial">Commercial Tower</option>
-                  <option value="Gated Community">Gated Community</option>
-                </select>
-              </div>
-
-              {/* Budget */}
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-extrabold tracking-wider text-primary px-1">Budget</label>
-                <select
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold shadow-inner"
-                >
-                  <option value="">Any Range</option>
-                  <option value="1-3">₹1 Cr – ₹3 Cr</option>
-                  <option value="3-5">₹3 Cr – ₹5 Cr</option>
-                  <option value="5-10">₹5 Cr – ₹10 Cr</option>
-                  <option value="10+">₹10 Cr+</option>
-                </select>
-              </div>
-
-              {/* Bedrooms */}
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-extrabold tracking-wider text-primary px-1">Bedrooms</label>
-                <select
-                  value={bedrooms}
-                  onChange={(e) => setBedrooms(e.target.value)}
-                  className="w-full bg-[#161924] border border-white/20 rounded-xl py-2.5 px-3 focus:outline-none focus:border-primary text-white text-xs select-custom font-semibold shadow-inner"
-                >
-                  <option value="">Any Layout</option>
-                  <option value="2">2 BHK</option>
-                  <option value="3">3 BHK</option>
-                  <option value="4">4 BHK</option>
-                  <option value="5">5+ BHK Suite</option>
-                </select>
-              </div>
-
-              {/* Submit Search */}
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  className="w-full btn-gold-luxury py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl h-[38px]"
-                >
-                  <Search className="h-4 w-4" />
-                  <span>Search</span>
-                </button>
-              </div>
-            </form>
           </div>
 
         </div>
